@@ -32,8 +32,8 @@ local o = {
     -- Font settings
     font_scale = 50,
     border_size = 0.7,
-    -- Highlight color in BGR hexadecimal
-    hi_color = "H46CFFF",
+    -- Highlight color in RGB hexadecimal
+    hi_color = "FFCF46",
     -- Draw ellipsis at start/end denoting ommited entries
     ellipsis = false,
     --Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
@@ -282,7 +282,7 @@ function draw_list(list, start, choice)
     local font_scale = o.font_scale * (display_scale or 1)
     local msg = string.format("{\\fscx%f}{\\fscy%f}{\\bord%f}",
                 font_scale, font_scale, o.border_size)
-    local hi_start = string.format("{\\1c&H%s}", o.hi_color)
+    local hi_start = string.format("{\\1c&H%s}", o.hi_color:gsub("(%x%x)(%x%x)(%x%x)","%3%2%1"))
     local hi_end = "{\\1c&HFFFFFF}"
     if o.ellipsis then
         if start ~= 0 then
