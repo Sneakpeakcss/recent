@@ -489,19 +489,38 @@ end)
 mp.register_event("file-loaded", function()
     unbind()
     cur_title, cur_path = get_path()
-end)
 
--- Using hook, as at the "end-file" event the playback position info is already unset.
-mp.add_hook("on_unload", 9, function ()
-    if not o.auto_save then return end
-    local pos = mp.get_property("percent-pos")
-    if not pos then return end
-    if tonumber(pos) <= o.auto_save_skip_past then
-        write_log(false)
-    else
-        write_log(true)
+    -- Use the original hook method if the skip past value is changed
+    if o.auto_save_skip_past == 100 then
+        file_load(false)
+    elseif not hook_added then
+        mp.add_hook("on_unload", 9, function ()
+            file_load(true)
+        end)
+        hook_added = true
     end
 end)
+
+function file_load(from_hook)
+    if not o.auto_save then return end
+
+    local save = function()
+        local pos = mp.get_property("percent-pos")
+        if not pos then return end
+        if tonumber(pos) <= o.auto_save_skip_past then
+            write_log(false)
+        else
+            write_log(true)
+        end
+    end
+
+    if from_hook then
+        save()
+    else
+        local timeout = is_protocol(mp.get_property("path")) and .03 or .001
+        mp.add_timeout(timeout, save)
+    end
+end
 
 mp.add_key_binding(o.display_bind, "display-recent", display_list)
 mp.add_key_binding(o.save_bind, "recent-save", function()
