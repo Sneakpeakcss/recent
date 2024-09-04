@@ -38,6 +38,8 @@ local o = {
     ellipsis = false,
     --Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
     list_show_amount = 20,
+    -- Use uosc menu as default
+    use_uosc_menu = false,
 }
 (require "mp.options").read_options(o, _, function() end)
 local utils = require("mp.utils")
@@ -408,7 +410,7 @@ function display_list()
     if o.hide_same_dir then
         list = hide_same_dir(list)
     end
-    if uosc_available then open_menu(list) return end
+    if o.use_uosc_menu and uosc_available then open_menu(list) return end
     local choice = 0
     local start = 0
     draw_list(list, start, choice)
@@ -461,7 +463,7 @@ end
 
 local function run_idle()
     mp.observe_property("idle-active", "bool", function(_, v)
-        if o.auto_run_idle and v and not uosc_available then
+        if o.auto_run_idle and v and not use_uosc_menu then
             display_list()
         end
     end)
@@ -477,7 +479,6 @@ end)
 mp.register_script_message('uosc-version', function(version)
     uosc_available = true
 end)
-mp.commandv('script-message-to', 'uosc', 'get-version', mp.get_script_name())
 
 mp.observe_property("display-hidpi-scale", "native", function(_, scale)
     if scale then
