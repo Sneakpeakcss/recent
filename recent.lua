@@ -18,6 +18,7 @@ local o = {
     show_paths = false,                    -- Show file paths instead of media-title
     slice_longfilenames = false,           -- Slice long filenames, and how many chars to show
     slice_longfilenames_amount = 100,
+    slice_longfilenames_amount_uosc = 100,
     split_paths = true,                    -- Split paths to only show the file or show the full path
 
     font_scale = 50,
@@ -95,8 +96,12 @@ function split_ext(filename)
     return filename
 end
 
-function strip_title(str)
-    if o.slice_longfilenames and str:len() > o.slice_longfilenames_amount + 5 then
+function strip_title(str, uoscopen)
+    if uoscopen then
+        if o.slice_longfilenames and str:len() > o.slice_longfilenames_amount_uosc + 5 then
+            str = utf8_sub(str, 1, o.slice_longfilenames_amount_uosc) .. "..."
+        end
+    elseif o.slice_longfilenames and str:len() > o.slice_longfilenames_amount + 5 then
         str = utf8_sub(str, 1, o.slice_longfilenames_amount) .. "..."
     end
     return str
@@ -404,8 +409,8 @@ function open_menu(lists)
     end
     for i = 1, length do
         menu.items[i] = {
-            title = (o.show_paths or uosc_opened) and strip_title(lists[#lists-i+1].path)
-            or strip_title(lists[#lists-i+1].title),
+            title = (o.show_paths or uosc_opened) and strip_title(lists[#lists-i+1].path, true)
+            or strip_title(lists[#lists-i+1].title, true),
             hint = get_ext(lists[#lists-i+1].path),
             value = { "loadfile", lists[#lists-i+1].path, "replace" },
         }
