@@ -40,6 +40,8 @@ local o = {
     list_show_amount = 20,
     -- Use uosc menu as default
     use_uosc_menu = false,
+    -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
+    double_menu_key = true,
 }
 (require "mp.options").read_options(o, _, function() end)
 local utils = require("mp.utils")
@@ -374,9 +376,11 @@ end
 
 -- Open the recent submenu for uosc
 function open_menu(lists)
+    local script_name = mp.get_script_name()
     local menu = {
         type = 'recent_menu',
         title = 'Recent',
+        on_close = {"script-message-to", script_name, "recent-uosc-closed"},
         items = { { title = 'Nothing here', value = 'ignore' } },
     }
     if #lists > o.list_show_amount then
@@ -386,14 +390,15 @@ function open_menu(lists)
     end
     for i = 1, length do
         menu.items[i] = {
-            title = o.show_paths and strip_title(split_ext(get_filename(lists[#lists-i+1])))
-            or strip_title(split_ext(lists[#lists-i+1].title)),
+            title = (o.show_paths or uosc_opened) and strip_title(lists[#lists-i+1].path)
+            or strip_title(lists[#lists-i+1].title),
             hint = get_ext(lists[#lists-i+1].path),
             value = { "loadfile", lists[#lists-i+1].path, "replace" },
         }
     end
     local json = utils.format_json(menu)
-    mp.commandv('script-message-to', 'uosc', 'open-menu', json)
+    mp.commandv("script-message-to", "uosc", not uosc_menu_opened and "open-menu" or "update-menu", json)
+    uosc_menu_opened = true
 end
 
 -- Display list and add keybinds
@@ -410,7 +415,20 @@ function display_list()
     if o.hide_same_dir then
         list = hide_same_dir(list)
     end
-    if o.use_uosc_menu and uosc_available then open_menu(list) return end
+
+    if not o.use_uosc_menu and uosc_menu_opened then
+        mp.commandv("script-message-to", mp.get_script_name(), "recent-uosc-closed")
+    end
+
+    if o.use_uosc_menu and uosc_available then
+        if uosc_menu_opened then mp.commandv('script-message-to', 'uosc', 'close-menu')
+            mp.commandv("script-message-to", mp.get_script_name(), "recent-uosc-closed") 
+            return
+        end
+        open_menu(list) 
+        if o.double_menu_key then uosc_opened = true end 
+        return
+    end
     local choice = 0
     local start = 0
     draw_list(list, start, choice)
@@ -461,6 +479,30 @@ function display_list()
     mp.add_forced_key_binding("ESC", "recent-ESC", function() unbind() end)
 end
 
+if o.double_menu_key then
+    -- Press %o.display_bind% to open normal menu, hold to open uosc menu
+    mp.add_key_binding(o.display_bind, "display-recent", function(keypress)
+        if keypress.event == "down" and uosc_available then
+            long_press = false
+            key_timer = mp.add_timeout(.2, function()
+                if list_drawn then unbind() end
+                local list = read_log_table()
+                open_menu(list)
+                long_press = true
+                uosc_opened = not uosc_opened
+            end)
+        elseif keypress.event == "up" then
+            if key_timer and key_timer:is_enabled() then key_timer:kill() end
+            if not long_press then
+                mp.commandv('script-message-to', 'uosc', 'close-menu')
+                display_list()
+            end
+        end
+    end, {complex=true})
+else
+    mp.add_key_binding(o.display_bind, "display-recent", display_list)
+end
+
 local function run_idle()
     mp.observe_property("idle-active", "bool", function(_, v)
         if o.auto_run_idle and v and not use_uosc_menu then
@@ -478,6 +520,12 @@ end)
 -- check if uosc is running
 mp.register_script_message('uosc-version', function(version)
     uosc_available = true
+    uosc_menu_opened = false
+end)
+
+mp.register_script_message("recent-uosc-closed", function()
+    uosc_menu_opened = false
+    uosc_opened = false
 end)
 
 mp.observe_property("display-hidpi-scale", "native", function(_, scale)
@@ -523,7 +571,6 @@ function file_load(from_hook)
     end
 end
 
-mp.add_key_binding(o.display_bind, "display-recent", display_list)
 mp.add_key_binding(o.save_bind, "recent-save", function()
     write_log(false)
     mp.osd_message("Saved entry to log")
