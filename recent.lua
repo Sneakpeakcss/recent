@@ -250,16 +250,21 @@ function write_log(delete)
             return line
         end
     end)
-    f = io.open(o.log_path, "w+")
+    local lines = {}
     if content then
         for i=1, #content do
-            f:write(("%s\n"):format(content[i]))
+            table.insert(lines, content[i])
         end
     end
     if not delete then
-        f:write(("[%s] \"%s\" | %s\n"):format(os.date(o.date_format), cur_title, cur_path))
+        table.insert(lines, string.format("[%s] \"%s\" | %s", os.date(o.date_format), cur_title, cur_path))
     end
-    f:close()
+    -- Write all accumulated lines to the file in one operation
+    local f = io.open(o.log_path, "w+")
+    if f then
+        f:write(table.concat(lines, "\n") .. "\n")
+        f:close()
+    end
     if dyn_menu.ready then
         update_dyn_menu_items()
     end
