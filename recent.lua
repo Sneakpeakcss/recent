@@ -156,11 +156,20 @@ function unbind()
         mp.remove_key_binding("recent-WUP")
         mp.remove_key_binding("recent-WDOWN")
         mp.remove_key_binding("recent-MMID")
+        mp.remove_key_binding("SHIFT_MMID")
         mp.remove_key_binding("recent-MRIGHT")
     end
     mp.remove_key_binding("recent-UP")
+    mp.remove_key_binding("recent-PGUP")
     mp.remove_key_binding("recent-DOWN")
+    mp.remove_key_binding("recent-PGDWN")
+    mp.remove_key_binding("recent-HOME")
+    mp.remove_key_binding("recent-END")
     mp.remove_key_binding("recent-ENTER")
+    mp.remove_key_binding("recent-KP_ENTER")
+    mp.remove_key_binding("recent-SHIFT_ENTER")
+    mp.remove_key_binding("recent-SHIFT_KP_ENTER")
+    mp.remove_key_binding("recent-Space")
     mp.remove_key_binding("recent-1")
     mp.remove_key_binding("recent-2")
     mp.remove_key_binding("recent-3")
@@ -323,20 +332,50 @@ function draw_list(list, start, choice)
     mp.set_osd_ass(0, 0, msg)
 end
 
+function page_move(list, start, choice, direction)
+    local max_start = math.max(#list - 10, 0)
+
+    -- Handle PGUP (moving up)
+    if direction < 0 then
+        if start == 0 and choice == 0 then
+            return start, choice  -- Already at the very top, no change
+        elseif start == 0 and choice > 0 then
+            choice = 0  -- Move selection to the very top
+        else
+            start = math.max(0, start + direction)  -- Normal move up
+        end
+    -- Handle PGDWN (moving down)
+    elseif direction > 0 then
+        if start == max_start and choice == math.min(#list - start, 10) - 1 then
+            return start, choice  -- Already at the very bottom, no change
+        elseif start == max_start and choice < math.min(#list - start, 10) - 1 then
+            choice = math.min(#list - start, 10) - 1  -- Move selection to the very bottom
+        else
+            start = math.min(max_start, start + direction)  -- Normal move down
+        end
+    end
+
+    draw_list(list, start, choice)
+    return start, choice
+end
+
 -- Handle up/down keys
 function select(list, start, choice, inc)
-    choice = choice + inc
-    if choice < 0 then
-        choice = choice + 1
-        start = start + inc
-    elseif choice >=  math.min(#list, 10) then
-        choice = choice - 1
-        start = start + inc
-    end
-    if start > math.max(#list-10, 0) then
-        start = start - 1
-    elseif start < 0 then
-        start = start + 1
+    if inc == "start" then
+        start, choice = 0, 0
+    elseif inc == "end" then
+        start = math.max(#list - 10, 0)
+        choice = math.min(#list, 10) - 1
+    else
+        choice = choice + inc
+        if choice < 0 then
+            choice = 0
+            start = start + inc
+        elseif choice >= math.min(#list, 10) then
+            choice = math.min(#list, 10) - 1
+            start = start + inc
+        end
+        start = math.max(math.min(start, #list - 10), 0)
     end
     draw_list(list, start, choice)
     return start, choice
@@ -356,13 +395,18 @@ function delete(list, start, choice)
 end
 
 -- Load file and remove binds
-function load(list, start, choice)
+function load(list, start, choice, action)
     unbind()
     if start+choice >= #list then return end
     if o.write_watch_later then
         mp.command("write-watch-later-config")
     end
-    mp.commandv("loadfile", list[#list-start-choice].path, "replace")
+    local path = list[#list-start-choice].path
+    action = action or "replace"
+    mp.commandv("loadfile", path, action)
+    if action == "append-play" then
+        mp.osd_message("Appending: " .. (is_protocol(path) and path or split_ext(get_filename({path = path}))))
+    end
 end
 
 -- play last played file
@@ -440,7 +484,31 @@ function display_list()
     mp.add_forced_key_binding("DOWN", "recent-DOWN", function()
         start, choice = select(list, start, choice, 1)
     end, {repeatable=true})
+    mp.add_forced_key_binding("PGUP", "recent-PGUP", function()
+        start, choice = page_move(list, start, choice, -10)
+    end, {repeatable=true})
+    mp.add_forced_key_binding("PGDWN", "recent-PGDWN", function()
+        start, choice = page_move(list, start, choice, 10)
+    end, {repeatable=true})
+    mp.add_forced_key_binding("HOME", "recent-HOME", function()
+        start, choice = select(list, start, choice, "start")
+    end)
+    mp.add_forced_key_binding("END", "recent-END", function()
+        start, choice = select(list, start, choice, "end")
+    end)
     mp.add_forced_key_binding("ENTER", "recent-ENTER", function()
+        load(list, start, choice)
+    end)
+    mp.add_forced_key_binding("KP_ENTER", "recent-KP_ENTER", function()
+        load(list, start, choice)
+    end)
+    mp.add_forced_key_binding("SHIFT+ENTER", "recent-SHIFT_ENTER", function()
+        load(list, start, choice, "append-play")
+    end)
+    mp.add_forced_key_binding("SHIFT+KP_ENTER", "recent-SHIFT_KP_ENTER", function()
+        load(list, start, choice, "append-play")
+    end)
+    mp.add_forced_key_binding("Space", "recent-Space", function()
         load(list, start, choice)
     end)
     mp.add_forced_key_binding("DEL", "recent-DEL", function()
@@ -461,6 +529,9 @@ function display_list()
         end)
         mp.add_forced_key_binding("MBTN_MID", "recent-MMID", function()
             load(list, start, choice)
+        end)
+        mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID", function()
+            load(list, start, choice, "append-play")
         end)
         mp.add_forced_key_binding("MBTN_RIGHT", "recent-MRIGHT", function()
             unbind()
