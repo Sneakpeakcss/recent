@@ -272,13 +272,34 @@ function draw_list(list, start, choice)
                 font_scale, font_scale, o.border_size)
     local hi_start = string.format("{\\1c&H%s}", o.hi_color:gsub("(%x%x)(%x%x)(%x%x)","%3%2%1"))
     local hi_end = "{\\1c&HFFFFFF}"
+    local hi_end = hi_end:gsub("{\\1c&H(%x%x)(%x%x)(%x%x)}","{\\1c&H%3%2%1}")
+    local size = #list
+
+    local current_line = start + choice + 1
+    local total_lines  = size
+    local current_page = math.ceil(current_line / 10)
+    local total_pages  = math.ceil(total_lines / 10)
+
+    local ss = "{\\fscx0}"
+    local se = string.format("{\\fscx%f}", font_scale)
+    local hs = ss .. string.char(0xE2, 0x80, 0x8A) .. se
+
+    -- Pad numbers with leading zeros and add hairspace before each digit to avoid width shifting in certain cases: "11" "111" "1111"
+    local function format_number(n, width) return (string.format("%0" .. width .. "d", n)):gsub("%d", hs .. "%0") end
+
+    local current_line = format_number(current_line, #tostring(total_lines))
+    local current_page = format_number(current_page, #tostring(total_pages))
+
+    -- Display additional information above the list
+    msg = msg .. string.format("%sLine:%s %s/%s %sPage:%s %s/%s\\N",
+                        hi_start, hi_end, current_line, total_lines,
+                        hi_start, hi_end, current_page, total_pages) .. (not o.ellipsis and "\\h\\N\\N" or "")
     if o.ellipsis then
         if start ~= 0 then
             msg = msg.."..."
         end
         msg = msg.."\\h\\N\\N"
     end
-    local size = #list
     for i=1, math.min(10, size-start), 1 do
         local key = i % 10
         local p
