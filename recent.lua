@@ -301,8 +301,8 @@ function draw_list(list, start, choice)
             print("("..key..") "..p)
         end
     end
-    if o.ellipsis and start+10 < size then
-        msg = msg .."..."
+    if o.ellipsis then
+        msg = msg .. (start+10 < size and "..." or "\\h")
     end
     mp.set_osd_ass(0, 0, msg)
 end
