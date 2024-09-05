@@ -1,48 +1,35 @@
 local o = {
-    -- Automatically save to log, otherwise only saves when requested
-    -- you need to bind a save key if you disable it
-    auto_save = true,
+    auto_save = true,                      -- Automatically save to log, otherwise only saves when requested
+                                           -- you need to bind a save key if you disable it
     save_bind = "",
-    -- When automatically saving, skip entries with playback positions
-    -- past this value, in percent. 100 saves all, around 95 is
-    -- good for skipping videos that have reached final credits.
-    auto_save_skip_past = 100,
-    -- Display only the latest file from each directory
-    hide_same_dir = false,
-    -- Runs automatically when --idle
-    auto_run_idle = true,
-    -- Write watch later for current file when switching
-    write_watch_later = true,
-    -- Display menu bind
-    display_bind = "`",
-    -- Middle click: Select; Right click: Exit;
-    -- Scroll wheel: Up/Down
-    mouse_controls = true,
-    -- Reads from config directory or an absolute path
-    log_path = "history.log",
-    -- Date format in the log (see lua date formatting)
-    date_format = "%d/%m/%y %X",
-    -- Show file paths instead of media-title
-    show_paths = false,
-    --slice long filenames, and how many chars to show
-    slice_longfilenames = false,
+    auto_save_skip_past = 100,             -- When automatically saving, skip entries with playback positions
+                                           -- past this value, in percent. 100 saves all, around 95 is
+                                           -- good for skipping videos that have reached final credits.
+    hide_same_dir = false,                 -- Display only the latest file from each directory
+    auto_run_idle = true,                  -- Runs automatically when --idle
+    write_watch_later = true,              -- Write watch later for current file when switching
+    display_bind = "`",                    -- Display menu bind
+
+    mouse_controls = true,                 -- Middle click: Select; Right click: Exit; Scroll wheel: Up/Down
+
+    log_path = "history.log",              -- Reads from config directory or an absolute path
+    date_format = "%d/%m/%y %X",           -- Date format in the log (see lua date formatting)
+
+    show_paths = false,                    -- Show file paths instead of media-title
+    slice_longfilenames = false,           -- Slice long filenames, and how many chars to show
     slice_longfilenames_amount = 100,
-    -- Split paths to only show the file or show the full path
-    split_paths = true,
-    -- Font settings
+    split_paths = true,                    -- Split paths to only show the file or show the full path
+
     font_scale = 50,
     border_size = 0.7,
-    -- Highlight color in RGB hexadecimal
-    hi_color = "FFCF46",
-    -- Draw ellipsis at start/end denoting ommited entries
-    ellipsis = false,
-    --Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
-    list_show_amount = 20,
-    -- Use uosc menu as default
-    use_uosc_menu = false,
-    -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
-    double_menu_key = true,
+    hi_color = "FFCF46",                   -- Highlight color in RRGGBB
+
+    ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
+    list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
+    use_uosc_menu = false,                 -- Use uosc menu as default
+    double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
 }
+
 (require "mp.options").read_options(o, _, function() end)
 local utils = require("mp.utils")
 o.log_path = utils.join_path(mp.find_config_file("."), o.log_path)
@@ -153,35 +140,18 @@ end
 
 function unbind()
     if o.mouse_controls then
-        mp.remove_key_binding("recent-WUP")
-        mp.remove_key_binding("recent-WDOWN")
-        mp.remove_key_binding("recent-MMID")
-        mp.remove_key_binding("SHIFT_MMID")
-        mp.remove_key_binding("recent-MRIGHT")
+        for _, key in ipairs({"WUP", "WDOWN", "MMID", "SHIFT_MMID", "MRIGHT"}) do
+            mp.remove_key_binding("recent-" .. key)
+        end
     end
-    mp.remove_key_binding("recent-UP")
-    mp.remove_key_binding("recent-PGUP")
-    mp.remove_key_binding("recent-DOWN")
-    mp.remove_key_binding("recent-PGDWN")
-    mp.remove_key_binding("recent-HOME")
-    mp.remove_key_binding("recent-END")
-    mp.remove_key_binding("recent-ENTER")
-    mp.remove_key_binding("recent-KP_ENTER")
-    mp.remove_key_binding("recent-SHIFT_ENTER")
-    mp.remove_key_binding("recent-SHIFT_KP_ENTER")
-    mp.remove_key_binding("recent-Space")
-    mp.remove_key_binding("recent-1")
-    mp.remove_key_binding("recent-2")
-    mp.remove_key_binding("recent-3")
-    mp.remove_key_binding("recent-4")
-    mp.remove_key_binding("recent-5")
-    mp.remove_key_binding("recent-6")
-    mp.remove_key_binding("recent-7")
-    mp.remove_key_binding("recent-8")
-    mp.remove_key_binding("recent-9")
-    mp.remove_key_binding("recent-0")
-    mp.remove_key_binding("recent-ESC")
-    mp.remove_key_binding("recent-DEL")
+    -- List of keys to unbind
+    for _, key in ipairs({
+        "UP", "PGUP", "DOWN", "PGDWN", "HOME", "END",
+        "ENTER", "KP_ENTER", "SHIFT_ENTER", "SHIFT_KP_ENTER", "Space", "DEL", "BS", "ESC",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"
+    }) do
+        mp.remove_key_binding("recent-" .. key)
+    end
     mp.set_osd_ass(0, 0, "")
     list_drawn = false
 end
@@ -459,11 +429,9 @@ function display_list()
     if o.hide_same_dir then
         list = hide_same_dir(list)
     end
-
     if not o.use_uosc_menu and uosc_menu_opened then
         mp.commandv("script-message-to", mp.get_script_name(), "recent-uosc-closed")
     end
-
     if o.use_uosc_menu and uosc_available then
         if uosc_menu_opened then mp.commandv('script-message-to', 'uosc', 'close-menu')
             mp.commandv("script-message-to", mp.get_script_name(), "recent-uosc-closed") 
@@ -478,39 +446,31 @@ function display_list()
     draw_list(list, start, choice)
     list_drawn = true
 
-    mp.add_forced_key_binding("UP", "recent-UP", function()
-        start, choice = select(list, start, choice, -1)
-    end, {repeatable=true})
-    mp.add_forced_key_binding("DOWN", "recent-DOWN", function()
-        start, choice = select(list, start, choice, 1)
-    end, {repeatable=true})
-    mp.add_forced_key_binding("PGUP", "recent-PGUP", function()
-        start, choice = page_move(list, start, choice, -10)
-    end, {repeatable=true})
-    mp.add_forced_key_binding("PGDWN", "recent-PGDWN", function()
-        start, choice = page_move(list, start, choice, 10)
-    end, {repeatable=true})
-    mp.add_forced_key_binding("HOME", "recent-HOME", function()
-        start, choice = select(list, start, choice, "start")
-    end)
-    mp.add_forced_key_binding("END", "recent-END", function()
-        start, choice = select(list, start, choice, "end")
-    end)
-    mp.add_forced_key_binding("ENTER", "recent-ENTER", function()
-        load(list, start, choice)
-    end)
-    mp.add_forced_key_binding("KP_ENTER", "recent-KP_ENTER", function()
-        load(list, start, choice)
-    end)
-    mp.add_forced_key_binding("SHIFT+ENTER", "recent-SHIFT_ENTER", function()
-        load(list, start, choice, "append-play")
-    end)
-    mp.add_forced_key_binding("SHIFT+KP_ENTER", "recent-SHIFT_KP_ENTER", function()
-        load(list, start, choice, "append-play")
-    end)
-    mp.add_forced_key_binding("Space", "recent-Space", function()
-        load(list, start, choice)
-    end)
+    -- Navigation keys
+    mp.add_forced_key_binding("UP",                 "recent-UP",             function() start, choice = select(list, start, choice, -1)      end, {repeatable=true})
+    mp.add_forced_key_binding("DOWN",               "recent-DOWN",           function() start, choice = select(list, start, choice, 1)       end, {repeatable=true})
+    mp.add_forced_key_binding("PGUP",               "recent-PGUP",           function() start, choice = page_move(list, start, choice, -10)  end, {repeatable=true})
+    mp.add_forced_key_binding("PGDWN",              "recent-PGDWN",          function() start, choice = page_move(list, start, choice, 10)   end, {repeatable=true})
+    mp.add_forced_key_binding("HOME",               "recent-HOME",           function() start, choice = select(list, start, choice, "start") end)
+    mp.add_forced_key_binding("END",                "recent-END",            function() start, choice = select(list, start, choice, "end")   end)
+    -- Selection keys
+    mp.add_forced_key_binding("ENTER",              "recent-ENTER",          function() load(list, start, choice)                            end)
+    mp.add_forced_key_binding("KP_ENTER",           "recent-KP_ENTER",       function() load(list, start, choice)                            end)
+    mp.add_forced_key_binding("SHIFT+ENTER",        "recent-SHIFT_ENTER",    function() load(list, start, choice, "append-play")             end)
+    mp.add_forced_key_binding("SHIFT+KP_ENTER",     "recent-SHIFT_KP_ENTER", function() load(list, start, choice, "append-play")             end)
+    mp.add_forced_key_binding("Space",              "recent-Space",          function() load(list, start, choice)                            end)
+    -- Exit keys
+    mp.add_forced_key_binding("BS",  "recent-BS",  unbind)
+    mp.add_forced_key_binding("ESC", "recent-ESC", unbind)
+    -- Mouse controls
+    if o.mouse_controls then
+        mp.add_forced_key_binding("WHEEL_UP",       "recent-WUP",            function() start, choice = select(list, start, choice, -1) end)
+        mp.add_forced_key_binding("WHEEL_DOWN",     "recent-WDOWN",          function() start, choice = select(list, start, choice, 1)  end)
+        mp.add_forced_key_binding("MBTN_MID",       "recent-MMID",           function() load(list, start, choice)                       end)
+        mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID",     function() load(list, start, choice, "append-play")        end)
+        mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",         unbind)
+    end
+    -- Deletion key
     mp.add_forced_key_binding("DEL", "recent-DEL", function()
         delete(list, start, choice)
         list = read_log_table()
@@ -520,34 +480,11 @@ function display_list()
         end
         start, choice = select(list, start, choice, 0)
     end)
-    if o.mouse_controls then
-        mp.add_forced_key_binding("WHEEL_UP", "recent-WUP", function()
-            start, choice = select(list, start, choice, -1)
-        end)
-        mp.add_forced_key_binding("WHEEL_DOWN", "recent-WDOWN", function()
-            start, choice = select(list, start, choice, 1)
-        end)
-        mp.add_forced_key_binding("MBTN_MID", "recent-MMID", function()
-            load(list, start, choice)
-        end)
-        mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID", function()
-            load(list, start, choice, "append-play")
-        end)
-        mp.add_forced_key_binding("MBTN_RIGHT", "recent-MRIGHT", function()
-            unbind()
-        end)
+    -- Number keys (1 to 0) 
+    for i = 1, 10 do
+        local key = tostring(i == 10 and 0 or i)
+        mp.add_forced_key_binding(key, "recent-" .. key, function() load(list, start, i - 1) end)
     end
-    mp.add_forced_key_binding("1", "recent-1", function() load(list, start, 0) end)
-    mp.add_forced_key_binding("2", "recent-2", function() load(list, start, 1) end)
-    mp.add_forced_key_binding("3", "recent-3", function() load(list, start, 2) end)
-    mp.add_forced_key_binding("4", "recent-4", function() load(list, start, 3) end)
-    mp.add_forced_key_binding("5", "recent-5", function() load(list, start, 4) end)
-    mp.add_forced_key_binding("6", "recent-6", function() load(list, start, 5) end)
-    mp.add_forced_key_binding("7", "recent-7", function() load(list, start, 6) end)
-    mp.add_forced_key_binding("8", "recent-8", function() load(list, start, 7) end)
-    mp.add_forced_key_binding("9", "recent-9", function() load(list, start, 8) end)
-    mp.add_forced_key_binding("0", "recent-0", function() load(list, start, 9) end)
-    mp.add_forced_key_binding("ESC", "recent-ESC", function() unbind() end)
 end
 
 if o.double_menu_key then
