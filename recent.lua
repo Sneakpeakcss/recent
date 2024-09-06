@@ -11,6 +11,8 @@ local o = {
     display_bind = "`",                    -- Display menu bind
 
     mouse_controls = true,                 -- Middle click: Select; Right click: Exit; Scroll wheel: Up/Down
+    mouse_drag_scrolling = false,          -- Enable mouse drag scrolling
+    drag_deadzone_margin = "0,0,0,0",      -- Dragging deadzones in percentages: top,right,bottom,left
 
     log_path = "history.log",              -- Reads from config directory or an absolute path
     date_format = "%d/%m/%y %X",           -- Date format in the log (see lua date formatting)
@@ -39,6 +41,7 @@ o.log_path = utils.join_path(mp.find_config_file("."), o.log_path)
 local cur_title, cur_path
 local list_drawn = false
 local uosc_available = false
+local mouse_history = {}
 local is_windows = package.config:sub(1,1) == "\\"
 
 function parse_custom_colors(custom_colors)
@@ -186,6 +189,9 @@ function unbind()
             mp.remove_key_binding("recent-" .. key)
         end
     end
+    if o.mouse_drag_scrolling then
+        mp.remove_key_binding("recent-MBTN_LEFT")
+    end
     -- List of keys to unbind
     for _, key in ipairs({
         "UP", "PGUP", "DOWN", "PGDWN", "HOME", "END",
@@ -196,6 +202,7 @@ function unbind()
     end
     mp.set_osd_ass(0, 0, "")
     list_drawn = false
+    default_drag_check = nil
 end
 
 function read_log(func)
@@ -517,13 +524,194 @@ function open_menu(lists)
     uosc_menu_opened = true
 end
 
+function set_dragging(state)
+    if not default_drag_check then
+        default_drag_check = mp.get_property_native("window-dragging")
+        if not default_drag_check then return end
+    end
+    mp.set_property_native("window-dragging", state)
+    mp.set_property_native("input-builtin-dragging", state)
+end
+
+function add_mouse_history(y)
+    local time = mp.get_time()
+    table.insert(mouse_history, {y = y, time = time})
+    if #mouse_history > 20 then
+        table.remove(mouse_history, 1)
+    end
+end
+
+-- Based on uosc
+function calculate_velocity()
+    local current_time = mp.get_time()
+
+    for i = #mouse_history, 1, -1 do
+        local snap = mouse_history[i]
+        if current_time - snap.time > 0.1 then
+            local y_diff = initial_y_position - snap.y
+            local time_diff = current_time - snap.time
+            if time_diff > 0.001 then
+                return {y = y_diff / time_diff}
+            end
+        end
+    end
+    return {y = 0}
+end
+
+function smooth_scroll(velocity)
+    if not velocity or math.abs(velocity.y) < 1 then return end
+
+    local display_height = mp.get_property_native("display-height")
+    local _, osd_height = mp.get_osd_size()
+    --Invert scroll direction while scaling velocity with a 300 height reference
+    local adjusted_velocity = (velocity.y * (math.log(display_height / osd_height + 1) / math.log(display_height / 300))) / -100
+
+
+    -- Skip smooth scrolling if the velocity is too small
+    local threshold = 2
+    if math.abs(adjusted_velocity) < threshold then
+        return
+    end
+
+    local start_time = mp.get_time()
+    local total_distance = adjusted_velocity
+    local fling_duration = 1
+    local initial_start = start
+
+    scroll_timer = mp.add_periodic_timer(1 / 30, function()
+        if not button_held and steps == 0 or not list_drawn then
+            if scroll_timer then
+                scroll_timer:kill()
+                scroll_timer = nil
+            end
+            return
+        end
+
+        local elapsed = mp.get_time() - start_time
+        local t = elapsed / fling_duration
+
+        -- Easing function for smooth scroll https://easings.net/
+        local ease_out_sine = math.sin((t * math.pi) / 2)
+        local current_distance = total_distance * ease_out_sine
+
+        -- Determine the number of steps based on the current distance
+        local steps = (velocity.y < 0 and math.ceil(current_distance) or math.floor(current_distance))
+
+        if steps ~= 0 then
+            start, choice = select(list, initial_start, choice, steps)
+            initial_start = start
+            total_distance = total_distance - steps
+        else
+            if scroll_timer then
+                scroll_timer:kill()
+                scroll_timer = nil
+            end
+        end
+    end)
+end
+
+function on_mouse_move(event, mouse_pos)
+    if not button_held then return end
+
+    local scroll_threshold = 50
+    local horizontal_drag_threshold = 40
+
+    local x = mouse_pos.x
+    local y = mouse_pos.y
+    local delta_x = x - initial_x_position
+    local delta_y = y - initial_y_position
+
+    -- Detect initial horizontal movement and enable dragging
+    if not block_dragging and math.abs(delta_x) > horizontal_drag_threshold then
+        dragging = true
+        button_held = false
+        set_dragging(true)
+        mp.unobserve_property(on_mouse_move)
+        return
+    end
+
+    -- Block abnormally large vertical movement
+    local max_delta = 300  
+    if math.abs(delta_y) > max_delta then
+        mouse_history = {}
+        initial_y_position = y
+        initial_scroll_amount = 0
+        return
+    end
+
+    initial_y_position = y
+    initial_scroll_amount = initial_scroll_amount + delta_y
+
+    add_mouse_history(y)
+
+    while math.abs(initial_scroll_amount) >= scroll_threshold do
+        if not block_dragging then block_dragging = true end
+        if initial_scroll_amount > 0 then
+            start, choice = select(list, start, choice, -1)
+            initial_scroll_amount = initial_scroll_amount - scroll_threshold
+        else
+            start, choice = select(list, start, choice, 1)
+            initial_scroll_amount = initial_scroll_amount + scroll_threshold
+        end
+    end
+end
+
+function handle_mouse_event(event, mouse_pos)
+    if not list_drawn then return end
+
+    local function is_within_central_region(x, y, osd_width, osd_height)
+        local t, r, b, l = o.drag_deadzone_margin:match("(%d+),(%d+),(%d+),(%d+)")
+        return x > (osd_width  * tonumber(l) / 100) and x < (osd_width  - osd_width  * tonumber(r) / 100) and 
+               y > (osd_height * tonumber(t) / 100) and y < (osd_height - osd_height * tonumber(b) / 100)
+    end
+
+    if event == "down" then
+        local initial_click_pos = {x = mouse_pos.x, y = mouse_pos.y}
+        local osd_width, osd_height = mp.get_osd_size()
+
+        button_held = true
+        set_dragging(false)
+
+        if (initial_click_pos.x == 0 and initial_click_pos.y == 0) or 
+           (not is_within_central_region(initial_click_pos.x, initial_click_pos.y, osd_width, osd_height) and 
+            not mp.get_property_bool("fullscreen")) then
+            button_held = false
+            set_dragging(true)
+        else
+            mouse_history = {}
+            initial_y_position = mouse_pos.y
+            initial_x_position = mouse_pos.x
+            initial_scroll_amount = 0 
+            mp.observe_property("mouse-pos", "native", on_mouse_move)
+        end
+
+        if scroll_timer then
+            scroll_timer:kill()
+            scroll_timer = nil
+        end
+
+    elseif event == "up" then
+        if dragging then 
+            dragging = false 
+        else
+            button_held = false
+            block_dragging = false
+            set_dragging(true)
+            mp.unobserve_property(on_mouse_move)
+        end
+
+        local velocity = calculate_velocity()
+        smooth_scroll(velocity)
+    end
+end
+
 -- Display list and add keybinds
 function display_list()
     if list_drawn then
         unbind()
         return
     end
-    local list = read_log_table()
+    list = read_log_table()
     if not list or not list[1] then
         mp.osd_message("Log empty")
         return
@@ -543,8 +731,8 @@ function display_list()
         if o.double_menu_key then uosc_opened = true end 
         return
     end
-    local choice = 0
-    local start = 0
+    choice = 0
+    start = 0
     draw_list(list, start, choice)
     list_drawn = true
 
@@ -571,6 +759,11 @@ function display_list()
         mp.add_forced_key_binding("MBTN_MID",       "recent-MMID",           function() load(list, start, choice)                       end)
         mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID",     function() load(list, start, choice, "append-play")        end)
         mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",         unbind)
+    end
+    if o.mouse_drag_scrolling then
+        mp.add_forced_key_binding("MBTN_LEFT", "recent-MBTN_LEFT", function(keypress)
+            handle_mouse_event(keypress.event, mp.get_property_native("mouse-pos"))
+        end, {complex=true})
     end
     -- Deletion key
     mp.add_forced_key_binding("DEL", "recent-DEL", function()
