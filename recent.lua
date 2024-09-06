@@ -29,6 +29,7 @@ local o = {
     list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
     use_uosc_menu = false,                 -- Use uosc menu as default
     double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
+    custom_colors = "",                    -- User defined Prefix/Colors (more details in config)
 }
 
 (require "mp.options").read_options(o, _, function() end)
@@ -39,6 +40,23 @@ local cur_title, cur_path
 local list_drawn = false
 local uosc_available = false
 local is_windows = package.config:sub(1,1) == "\\"
+
+function parse_custom_colors(custom_colors)
+    local parsed_tags = {}
+
+    for entry in custom_colors:gmatch("[^,]+") do
+        local pattern, prefix, prefixColor, highlightColor = entry:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
+        table.insert(parsed_tags, {
+            pattern = pattern,
+            prefix = (prefix == '""') and "" or prefix,
+            prefixColor = (prefixColor == '""') and "" or prefixColor,
+            highlightColor = (highlightColor == '""') and "" or highlightColor
+        })
+    end
+
+    return parsed_tags
+end
+custom_colors = parse_custom_colors(o.custom_colors)
 
 function esc_string(str)
     return str:gsub("([%p])", "%%%1")
@@ -88,6 +106,11 @@ local function utf8_sub(s, i, j)
     return table.concat(t)
 end
 
+function utf8_len(s)
+    local _, count = string.gsub(s, UTF8_PATTERN, "")
+    return count
+end
+
 function split_ext(filename)
     local idx = filename:match(".+()%.%w+$")
     if idx then
@@ -96,13 +119,13 @@ function split_ext(filename)
     return filename
 end
 
-function strip_title(str, uoscopen)
+function strip_title(str, uoscopen, prefix_length)
     if uoscopen then
-        if o.slice_longfilenames and str:len() > o.slice_longfilenames_amount_uosc + 5 then
+        if o.slice_longfilenames and utf8_len(str) > (o.slice_longfilenames_amount_uosc + 5) then
             str = utf8_sub(str, 1, o.slice_longfilenames_amount_uosc) .. "..."
         end
-    elseif o.slice_longfilenames and str:len() > o.slice_longfilenames_amount + 5 then
-        str = utf8_sub(str, 1, o.slice_longfilenames_amount) .. "..."
+    elseif o.slice_longfilenames and utf8_len(str..(prefix_length or "")) > (o.slice_longfilenames_amount + 5) then
+        str = utf8_sub(str, 1, o.slice_longfilenames_amount - utf8_len(prefix_length or "")) .. "..."
     end
     return str
 end
@@ -318,10 +341,31 @@ function draw_list(list, start, choice)
             p = list[size-start-i+1].title or list[size-start-i+1].path or ""
         end
         p = p:gsub("\\", "\\\239\187\191"):gsub("{", "\\{"):gsub("^ ", "\\h")
+
+        -- Check if the path contains any custom tags
+        local prefix = ""
+        local prefix_length = ""
+        local highlightColor = ""
+        if o.custom_colors then
+            for _, tag in ipairs(custom_colors) do
+                if list[size-start-i+1].path:lower():match(tag.pattern) then
+                    if tag.prefix and tag.prefix ~= "" then
+                        prefix = string.format("{\\q2}{\\1c&H%s}%s ", tag.prefixColor ~= "" and tag.prefixColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1") or "00FF00", tag.prefix) .. hi_end
+                        prefix_length = tag.prefix
+                    end
+                    highlightColor = tag.highlightColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1")
+                    break
+                end
+            end
+        end
+
+        -- Apply the highlightColor (if specified)
+        local hi_start = highlightColor ~= "" and string.format("{\\1c&H%s}", highlightColor) or hi_start
+
         if i == choice+1 then
-            msg = msg..hi_start.."("..key..")  "..strip_title(p).."\\N\\N"..hi_end
+            msg = msg..hi_start.."("..key..")  "..(prefix ~= "" and prefix..hi_start or "") ..strip_title(p, nil, prefix_length).."\\N\\N"..hi_end
         else
-            msg = msg.."("..key..")  "..strip_title(p).."\\N\\N"
+            msg = msg.."("..key..")  "          ..(prefix ~= "" and prefix or "")           ..strip_title(p, nil, prefix_length).."\\N\\N"
         end
         if not list_drawn then
             print("("..key..") "..p)
