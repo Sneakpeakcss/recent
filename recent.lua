@@ -63,7 +63,11 @@ function esc_string(str)
 end
 
 function is_protocol(path)
-    return type(path) == 'string' and path:match('^%a[%a%d-_]+://') ~= nil
+    return type(path) == 'string' and (
+        path:match('^%a[%a%d-_]+://') ~= nil
+        or (is_windows and path == "-" and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))   -- streamlink doesn't provide anything beside a single hyphen in stdin mode
+        or (is_windows and path:find("Streamlink Twitch GUI"))
+    )
 end
 
 function normalize(path)
@@ -131,7 +135,11 @@ function strip_title(str, uoscopen, prefix_length)
 end
 
 function get_ext(path)
-    if is_protocol(path) then
+    if path:find("youtu%.?be") then
+        return "YTB"
+    elseif is_windows and path:find("Streamlink Twitch GUI") then
+        return "LIVE"
+    elseif is_protocol(path) then
         return path:match("^(%a[%w.+-]-)://"):upper()
     else
         return path:match(".+%.(%w+)$"):upper()
@@ -157,7 +165,13 @@ end
 function get_path()
     local path = mp.get_property("path")
     local title = mp.get_property("media-title"):gsub("\"", "")
+    local working_dir = mp.get_property_native("working-directory")
     if not path then return end
+    if is_windows and working_dir:find("Streamlink Twitch GUI") then
+        local channel_name = title:match("twitch%.tv/([^/]+)")
+        local titleStreamlink = mp.get_property("title"):gsub("\"", ""):match("(.*)    —    Viewers") or "Streamlink - " .. title
+        return titleStreamlink, working_dir .. "\\streamlink-twitch-gui.exe " .. "\"--launch=" .. channel_name .. " --tray\"" .. os.date(" %d/%m/%y")
+    end
     if is_protocol(path) then
         return title, path
     else
@@ -448,10 +462,15 @@ function load(list, start, choice, action)
         mp.command("write-watch-later-config")
     end
     local path = list[#list-start-choice].path
-    action = action or "replace"
-    mp.commandv("loadfile", path, action)
-    if action == "append-play" then
-        mp.osd_message("Appending: " .. (is_protocol(path) and path or split_ext(get_filename({path = path}))))
+    if is_windows and path:find("streamlink%-twitch%-gui.exe") then
+        mp.commandv("run", path)
+        mp.command("quit")
+    else
+        action = action or "replace"
+        mp.commandv("loadfile", path, action)
+        if action == "append-play" then
+            mp.osd_message("Appending: " .. (is_protocol(path) and path or split_ext(get_filename({path = path}))))
+        end
     end
 end
 
@@ -479,11 +498,18 @@ function open_menu(lists)
         length = #lists
     end
     for i = 1, length do
+        --Path check for streamlink in uosc menu
+        local path = lists[#lists-i+1].path
+        if is_windows then
+            value = path:find("streamlink%-twitch%-gui.exe") and "run '" .. path .. "'; quit" or { "loadfile", path, "replace" }
+        else
+            value = { "loadfile", path, "replace" }
+        end
         menu.items[i] = {
             title = (o.show_paths or uosc_opened) and strip_title(lists[#lists-i+1].path, true)
             or strip_title(lists[#lists-i+1].title, true),
             hint = get_ext(lists[#lists-i+1].path),
-            value = { "loadfile", lists[#lists-i+1].path, "replace" },
+            value = value,
         }
     end
     local json = utils.format_json(menu)
