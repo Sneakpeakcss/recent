@@ -296,7 +296,8 @@ end
 -- Display list on OSD and terminal
 function draw_list(list, start, choice)
     local font_scale = o.font_scale * (display_scale or 1)
-    local msg = string.format("{\\fscx%f}{\\fscy%f}{\\bord%f}",
+    local hidden_unicode = "{\\fscx0}{\\fscy0}\u{2024}"   -- Workaround for font issues when emoji appears before certain symbols while using default mpv font
+    local msg = hidden_unicode .. string.format("{\\fscx%f}{\\fscy%f}{\\bord%f}",
                 font_scale, font_scale, o.border_size)
     local hi_start = string.format("{\\1c&H%s}", o.hi_color:gsub("(%x%x)(%x%x)(%x%x)","%3%2%1"))
     local hi_end = "{\\1c&HFFFFFF}"
