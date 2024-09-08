@@ -761,7 +761,7 @@ function display_list()
         mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",         unbind)
     end
     if o.mouse_drag_scrolling then
-        mp.add_forced_key_binding("MBTN_LEFT", "recent-MBTN_LEFT", function(keypress)
+        mp.add_key_binding("MBTN_LEFT", "recent-MBTN_LEFT", function(keypress)
             handle_mouse_event(keypress.event, mp.get_property_native("mouse-pos"))
         end, {complex=true})
     end
@@ -794,7 +794,7 @@ if o.double_menu_key then
                 long_press = true
                 uosc_opened = not uosc_opened
             end)
-        elseif keypress.event == "up" then
+        elseif keypress.event == "press" or keypress.event == "up" then
             if key_timer and key_timer:is_enabled() then key_timer:kill() end
             if not long_press then
                 mp.commandv('script-message-to', 'uosc', 'close-menu')
@@ -829,6 +829,7 @@ end)
 mp.register_script_message("recent-uosc-closed", function()
     uosc_menu_opened = false
     uosc_opened = false
+    long_press = false
 end)
 
 mp.observe_property("display-hidpi-scale", "native", function(_, scale)
