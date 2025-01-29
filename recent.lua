@@ -36,6 +36,7 @@ local o = {
 
 (require "mp.options").read_options(o, _, function() end)
 local utils = require("mp.utils")
+local input = require("mp.input")
 o.log_path = utils.join_path(mp.find_config_file("."), o.log_path)
 
 local cur_title, cur_path
@@ -195,7 +196,7 @@ function unbind()
     -- List of keys to unbind
     for _, key in ipairs({
         "UP", "PGUP", "DOWN", "PGDWN", "HOME", "END",
-        "ENTER", "KP_ENTER", "SHIFT_ENTER", "SHIFT_KP_ENTER", "Space", "DEL", "BS", "ESC",
+        "ENTER", "KP_ENTER", "SHIFT_ENTER", "SHIFT_KP_ENTER", "Space", "DEL", "CTRL+f", "BS", "ESC",
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"
     }) do
         mp.remove_key_binding("recent-" .. key)
@@ -527,6 +528,52 @@ function open_menu(lists)
     uosc_menu_opened = true
 end
 
+function search()
+    is_search_open = true
+    input.get({
+        default_text = "",
+        prompt = "Search: ",
+        closed = function() is_search_open = false end,
+        submit = function(user_input)
+            if user_input == "" then
+                list = read_log_table()
+                start, choice = 0, 0
+                draw_list(list, start, choice)
+                input.terminate()
+                is_search_open = false
+                return
+            end
+            local search_query = user_input:lower()
+            local filtered_list = {}
+            for _, entry in ipairs(list) do
+                local title = (entry.title or ""):lower()
+                local path = (entry.path or ""):lower()
+                local prefix = ""
+                if o.custom_colors then
+                    for _, tag in ipairs(custom_colors) do
+                        if path:match(tag.pattern) then
+                            prefix = tag.prefix and tag.prefix:lower() or ""
+                            break
+                        end
+                    end
+                end
+                if title:match(search_query) or path:match(search_query) or prefix:match(search_query) then
+                    table.insert(filtered_list, entry)
+                end
+            end
+            if #filtered_list > 0 then
+                list = filtered_list
+                start, choice = 0, 0
+                draw_list(list, start, choice)
+                input.terminate()
+                is_search_open = false
+            else
+                mp.osd_message("No matches found", 2)
+            end
+        end
+    })
+end
+    
 function set_dragging(state)
     if not default_drag_check then
         default_drag_check = mp.get_property_native("window-dragging")
@@ -755,6 +802,8 @@ function display_list()
     -- Exit keys
     mp.add_forced_key_binding("BS",  "recent-BS",  unbind)
     mp.add_forced_key_binding("ESC", "recent-ESC", unbind)
+    -- Search key
+    mp.add_forced_key_binding("CTRL+f", "recent-CTRL+f", search)
     -- Mouse controls
     if o.mouse_controls then
         mp.add_forced_key_binding("WHEEL_UP",       "recent-WUP",            function() start, choice = select(list, start, choice, -1) end)
@@ -848,6 +897,10 @@ mp.observe_property("display-hidpi-scale", "native", function(_, scale)
 end)
 
 mp.register_event("file-loaded", function()
+    if is_search_open then 
+        input.terminate()
+        is_search_open = false
+    end
     unbind()
     cur_title, cur_path = get_path()
 
