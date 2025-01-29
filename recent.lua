@@ -770,6 +770,11 @@ function display_list()
     end
     -- Deletion key
     mp.add_forced_key_binding("DEL", "recent-DEL", function()
+        local now = mp.get_time()
+        if now - (last_delete_time or 0) < 0.05 then
+            return
+        end
+        last_delete_time = now
         delete(list, start, choice)
         list = read_log_table()
         if not list or not list[1] then
@@ -777,7 +782,7 @@ function display_list()
             return
         end
         start, choice = select(list, start, choice, 0)
-    end)
+    end, {repeatable = true})
     -- Number keys (1 to 0) 
     for i = 1, 10 do
         local key = tostring(i == 10 and 0 or i)
