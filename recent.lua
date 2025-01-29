@@ -463,16 +463,19 @@ end
 
 -- Load file and remove binds
 function load(list, start, choice, action)
-    unbind()
+    if not action then
+        unbind()
+    end
     if start+choice >= #list then return end
     if o.write_watch_later then
         mp.command("write-watch-later-config")
     end
     local path = list[#list-start-choice].path
-    if is_windows and path:find("streamlink%-twitch%-gui.exe") then
+    local is_streamlink = path:find("streamlink%-twitch%-gui.exe")
+    if is_windows and is_streamlink and not action then
         mp.commandv("run", path)
         mp.command("quit")
-    else
+    elseif not is_streamlink then
         action = action or "replace"
         mp.commandv("loadfile", path, action)
         if action == "append-play" then
