@@ -544,7 +544,7 @@ function search()
                 return
             end
             local search_query = user_input:lower()
-            local filtered_list = {}
+            filtered_list = {}
             for _, entry in ipairs(list) do
                 local title = (entry.title or ""):lower()
                 local path = (entry.path or ""):lower()
@@ -825,7 +825,19 @@ function display_list()
         end
         last_delete_time = now
         delete(list, start, choice)
-        list = read_log_table()
+        if list == filtered_list then
+            for i, entry in ipairs(filtered_list) do
+                if entry.path == list[#list-start-choice].path then
+                    table.remove(filtered_list, i)
+                    break
+                end
+            end
+            if #filtered_list == 0 then
+                list = read_log_table()
+            end
+        else
+            list = read_log_table()
+        end
         if not list or not list[1] then
             unbind()
             return
