@@ -832,32 +832,40 @@ function display_list()
         end, {complex=true})
     end
     -- Deletion key
-    mp.add_forced_key_binding("DEL", "recent-DEL", function()
-        local now = mp.get_time()
-        if now - (last_delete_time or 0) < 0.05 then
-            return
-        end
-        last_delete_time = now
-        delete(list, start, choice)
-        if list == filtered_list then
-            for i, entry in ipairs(filtered_list) do
-                if entry.path == list[#list-start-choice].path then
-                    table.remove(filtered_list, i)
-                    break
-                end
+    mp.add_forced_key_binding("DEL", "recent-DEL", function(keypress)
+        if keypress.event == "down" or keypress.event == "repeat" then
+            if stop_on_list_change then
+                return
             end
-            if #filtered_list == 0 then
+            local now = mp.get_time()
+            if now - (last_delete_time or 0) < 0.05 then
+                return
+            end
+            last_delete_time = now
+            delete(list, start, choice)
+            if list == filtered_list then
+                for i, entry in ipairs(filtered_list) do
+                    if entry.path == list[#list-start-choice].path then
+                        table.remove(filtered_list, i)
+                        break
+                    end
+                end
+                if #filtered_list == 0 then
+                    list = read_log_table()
+                    stop_on_list_change = true
+                end
+            else
                 list = read_log_table()
             end
-        else
-            list = read_log_table()
+            if not list or not list[1] then
+                unbind()
+                return
+            end
+            start, choice = select(list, start, choice, 0)
+        elseif keypress.event == "up" then
+            stop_on_list_change = false
         end
-        if not list or not list[1] then
-            unbind()
-            return
-        end
-        start, choice = select(list, start, choice, 0)
-    end, {repeatable = true})
+    end, {complex = true})
     -- Number keys (1 to 0) 
     for i = 1, 10 do
         local key = tostring(i == 10 and 0 or i)
