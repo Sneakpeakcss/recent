@@ -28,7 +28,8 @@ local o = {
     hi_color = "FFCF46",                   -- Highlight color in RRGGBB
 
     ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
-    list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc or mpv-menu-plugin
+    list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
+    list_show_amount_dyn_menu = 20,        -- Change maximum number to show items on integrated submenus in mpv-menu-plugin
     use_uosc_menu = false,                 -- Use uosc menu as default
     double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
     custom_colors = "",                    -- User defined Prefix/Colors (more details in config)
@@ -265,8 +266,8 @@ function update_dyn_menu_items()
     if o.hide_same_dir then
         lists = hide_same_dir(lists)
     end
-    if #lists > o.list_show_amount then
-        length = o.list_show_amount
+    if #lists > o.list_show_amount_dyn_menu then
+        length = o.list_show_amount_dyn_menu
     else
         length = #lists
     end
