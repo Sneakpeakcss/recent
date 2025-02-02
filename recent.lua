@@ -339,13 +339,15 @@ function draw_list(list, start, choice)
     -- Pad numbers with leading zeros and add hairspace before each digit to avoid width shifting in certain cases: "11" "111" "1111"
     local function format_number(n, width) return (string.format("%0" .. width .. "d", n)):gsub("%d", hs .. "%0") end
 
-    local current_line = format_number(current_line, #tostring(total_lines))
-    local current_page = format_number(current_page, #tostring(total_pages))
+    local current_line   = format_number(current_line, #tostring(total_lines))
+    local total_lines_hs = format_number(total_lines,  #tostring(total_lines))
+    local current_page   = format_number(current_page, #tostring(total_pages))
+    local total_pages_hs = format_number(total_pages,  #tostring(total_pages))
 
     -- Display additional information above the list
     msg = msg .. string.format("%sLine:%s %s/%s %sPage:%s %s/%s\\N",
-                        hi_start, hi_end, current_line, total_lines,
-                        hi_start, hi_end, current_page, total_pages) .. (not o.ellipsis and "\\h\\N\\N" or "")
+                        hi_start, hi_end, current_line, total_lines_hs,
+                        hi_start, hi_end, current_page, total_pages_hs) .. (not o.ellipsis and "\\h\\N\\N" or "")
     if o.ellipsis then
         if start ~= 0 then
             msg = msg.."..."
