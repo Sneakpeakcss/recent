@@ -544,6 +544,11 @@ function search()
                 return
             end
             local search_query = user_input:lower()
+            local split_search_terms = {}
+            -- Split search input into individual search terms
+            for term in search_query:gmatch("%S+") do
+                table.insert(split_search_terms, term)
+            end
             filtered_list = {}
             for _, entry in ipairs(list) do
                 local title = (entry.title or ""):lower()
@@ -557,7 +562,16 @@ function search()
                         end
                     end
                 end
-                if title:match(search_query) or path:match(search_query) or prefix:match(search_query) then
+                local matches_all_terms = true
+                -- Check if all search terms appear in any of the fields
+                for _, term in ipairs(split_search_terms) do
+                    local term_found = title:match(term) or path:match(term) or prefix:match(term)
+                    if not term_found then
+                        matches_all_terms = false
+                        break
+                    end
+                end
+                if matches_all_terms then
                     table.insert(filtered_list, entry)
                 end
             end
