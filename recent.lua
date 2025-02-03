@@ -538,7 +538,7 @@ function search()
         prompt = "Search: ",
         closed = function() is_search_open = false end,
         submit = function(user_input)
-            if user_input == "" then
+            if user_input == "" or user_input == '""' then
                 list = read_log_table()
                 start, choice = 0, 0
                 draw_list(list, start, choice)
@@ -546,38 +546,77 @@ function search()
                 is_search_open = false
                 return
             end
-            local search_query = user_input:lower()
-            local split_search_terms = {}
-            -- Split search input into individual search terms
-            for term in search_query:gmatch("%S+") do
-                table.insert(split_search_terms, term)
+
+            local function escape_pattern(str)
+                return str:gsub("([%(%)%.%+%-%*%?%[%]%^%$%%])", "%%%1")
             end
+
+            local search_query = user_input:lower()
+            local include_terms, exclude_terms = {}, {}
+
+            -- Process quoted phrases
+            for symbol, phrase in search_query:gmatch('(%-?)"(.-)"') do
+                local escaped_phrase = escape_pattern(phrase)
+                if symbol == "-" then
+                    table.insert(exclude_terms, escaped_phrase)
+                else
+                    table.insert(include_terms, escaped_phrase)
+                end
+                search_query = search_query:gsub('%-?"' .. phrase .. '"', "")
+            end
+
+            -- Process individual words
+            for term in search_query:gmatch("%S+") do
+                if term:sub(1, 1) == "-" then
+                    local escaped_term = escape_pattern(term:sub(2))
+                    table.insert(exclude_terms, escaped_term)
+                else
+                    local escaped_term = escape_pattern(term)
+                    table.insert(include_terms, escaped_term)
+                end
+            end
+
             filtered_list = {}
             for _, entry in ipairs(list) do
-                local title = (entry.title or ""):lower()
-                local path = (entry.path or ""):lower()
+                local title, path = (entry.title or ""):lower(), (entry.path or ""):lower()
                 local prefix = ""
+
+                -- Check for prefix tags
                 if o.custom_colors then
                     for _, tag in ipairs(custom_colors) do
-                        if path:match(tag.pattern) then
+                        if path:find(tag.pattern) then
                             prefix = tag.prefix and tag.prefix:lower() or ""
                             break
                         end
                     end
                 end
-                local matches_all_terms = true
-                -- Check if all search terms appear in any of the fields
-                for _, term in ipairs(split_search_terms) do
-                    local term_found = title:match(term) or path:match(term) or prefix:match(term)
-                    if not term_found then
-                        matches_all_terms = false
+
+                local content = prefix .. " " .. title .. " " .. path
+                local matches_all = true
+
+                -- Check exclusions
+                for _, term in ipairs(exclude_terms) do
+                    if content:find(term) then
+                        matches_all = false
                         break
                     end
                 end
-                if matches_all_terms then
+
+                -- Check inclusions
+                if matches_all and #include_terms > 0 then
+                    for _, term in ipairs(include_terms) do
+                        if not content:find(term) then
+                            matches_all = false
+                            break
+                        end
+                    end
+                end
+
+                if matches_all then
                     table.insert(filtered_list, entry)
                 end
             end
+
             if #filtered_list > 0 then
                 list = filtered_list
                 start, choice = 0, 0
@@ -590,7 +629,7 @@ function search()
         end
     })
 end
-    
+
 function set_dragging(state)
     if not default_drag_check then
         default_drag_check = mp.get_property_native("window-dragging")
