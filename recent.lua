@@ -70,7 +70,7 @@ end
 function is_protocol(path)
     return type(path) == 'string' and (
         path:match('^%a[%a%d-_]+://') ~= nil
-        or (is_windows and path == "-" and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))   -- streamlink doesn't provide anything beside a single hyphen in stdin mode
+        or (is_windows and path:match("[\\/]?-$") and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))   -- streamlink doesn't provide anything beside a single hyphen in stdin mode
         or (is_windows and path:find("Streamlink Twitch GUI"))
     )
 end
