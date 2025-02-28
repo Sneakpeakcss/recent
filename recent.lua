@@ -562,7 +562,7 @@ function search()
                 else
                     table.insert(include_terms, escaped_phrase)
                 end
-                search_query = search_query:gsub('%-?"' .. phrase .. '"', "")
+                search_query = search_query:gsub('%-?"' .. escaped_phrase .. '"', "")
             end
 
             -- Process individual words
