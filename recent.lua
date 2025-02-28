@@ -197,7 +197,7 @@ function unbind()
     -- List of keys to unbind
     for _, key in ipairs({
         "UP", "PGUP", "DOWN", "PGDWN", "HOME", "END",
-        "ENTER", "KP_ENTER", "SHIFT_ENTER", "SHIFT_KP_ENTER", "Space", "DEL", "CTRL+f", "BS", "ESC",
+        "ENTER", "KP_ENTER", "SHIFT_ENTER", "SHIFT_KP_ENTER", "Space", "DEL", "CTRL+SHIFT+f", "BS", "ESC",
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"
     }) do
         mp.remove_key_binding("recent-" .. key)
@@ -859,7 +859,7 @@ function display_list()
     mp.add_forced_key_binding("BS",  "recent-BS",  unbind)
     mp.add_forced_key_binding("ESC", "recent-ESC", unbind)
     -- Search key
-    mp.add_forced_key_binding("CTRL+f", "recent-CTRL+f", search)
+    mp.add_forced_key_binding("CTRL+SHIFT+f", "recent-CTRL+SHIFT+f", search)
     -- Mouse controls
     if o.mouse_controls then
         mp.add_forced_key_binding("WHEEL_UP",       "recent-WUP",            function() start, choice = select(list, start, choice, -1) end)
