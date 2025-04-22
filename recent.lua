@@ -48,15 +48,27 @@ local is_windows = package.config:sub(1,1) == "\\"
 
 function parse_custom_colors(custom_colors)
     local parsed_tags = {}
+    local audio_extensions = { "aac", "aiff", "ape", "au", "flac", "m4a", "mka", "mp3", "oga", "ogg", "ogm", "opus", "wav", "wma" }
 
-    for entry in custom_colors:gmatch("[^,]+") do
-        local pattern, prefix, prefixColor, highlightColor = entry:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
-        table.insert(parsed_tags, {
+    local function create_tag(pattern, prefix, prefixColor, highlightColor)
+        return {
             pattern = pattern,
             prefix = (prefix == '""') and "" or prefix,
             prefixColor = (prefixColor == '""') and "" or prefixColor,
             highlightColor = (highlightColor == '""') and "" or highlightColor
-        })
+        }
+    end
+
+    for entry in custom_colors:gmatch("[^,]+") do
+        local pattern, prefix, prefixColor, highlightColor = entry:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
+        if pattern == "{audio}" then
+            local base = is_windows and "^%a:[/\\].*%." or "^/.*%."
+            for _, ext in ipairs(audio_extensions) do
+                table.insert(parsed_tags, create_tag(base .. ext .. "$", prefix, prefixColor, highlightColor))
+            end
+        else
+            table.insert(parsed_tags, create_tag(pattern, prefix, prefixColor, highlightColor))
+        end
     end
 
     return parsed_tags
