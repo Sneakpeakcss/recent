@@ -75,10 +75,6 @@ function parse_custom_colors(custom_colors)
 end
 custom_colors = parse_custom_colors(o.custom_colors)
 
-function esc_string(str)
-    return str:gsub("([%p])", "%%%1")
-end
-
 function is_protocol(path)
     return type(path) == 'string' and (
         path:match('^%a[%a%d-_]+://') ~= nil
@@ -302,7 +298,7 @@ function write_log(delete)
         return
     end
     local content = read_log(function(line)
-        if line:find(esc_string(cur_path)) then
+        if line:find(cur_path, 1, true) then
             return nil
         else
             return line
