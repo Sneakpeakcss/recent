@@ -212,7 +212,9 @@ function unbind()
     end
     mp.set_osd_ass(0, 0, "")
     list_drawn = false
-    default_drag_check = nil
+    
+    if scrolling_active then cancel_scroll() end
+    default_drag_check, default_doubleclick_time, dragging_state = nil, nil, nil
 end
 
 function read_log(func)
@@ -639,12 +641,25 @@ function search()
 end
 
 function set_dragging(state)
-    if not default_drag_check then
-        default_drag_check = mp.get_property_native("window-dragging")
-        if not default_drag_check then return end
+    if dragging_state == state then return end
+    dragging_state = state
+
+    default_drag_check = default_drag_check or mp.get_property_native("window-dragging")
+    default_doubleclick_time = default_doubleclick_time or mp.get_property("input-doubleclick-time")
+
+    if default_drag_check then
+        mp.set_property_native("window-dragging", state)
+        mp.set_property_native("input-builtin-dragging", state)
     end
-    mp.set_property_native("window-dragging", state)
-    mp.set_property_native("input-builtin-dragging", state)
+
+    if default_doubleclick_time ~= "0" then
+        mp.set_property("input-doubleclick-time", state and default_doubleclick_time or "0")
+    end
+end
+
+function cancel_scroll()
+    set_dragging(true)
+    scrolling_active = false
 end
 
 function add_mouse_history(y)
@@ -673,17 +688,18 @@ function calculate_velocity()
 end
 
 function smooth_scroll(velocity)
-    if not velocity or math.abs(velocity.y) < 1 then return end
+    if not velocity or math.abs(velocity.y) < 1 then cancel_scroll() return end
+    scrolling_active = true
 
     local display_height = mp.get_property_native("display-height")
     local _, osd_height = mp.get_osd_size()
-    --Invert scroll direction while scaling velocity with a 300 height reference
+    -- Invert scroll direction while scaling velocity with a 300 height reference
     local adjusted_velocity = (velocity.y * (math.log(display_height / osd_height + 1) / math.log(display_height / 300))) / -100
-
 
     -- Skip smooth scrolling if the velocity is too small
     local threshold = 2
     if math.abs(adjusted_velocity) < threshold then
+        cancel_scroll()
         return
     end
 
@@ -693,14 +709,6 @@ function smooth_scroll(velocity)
     local initial_start = start
 
     scroll_timer = mp.add_periodic_timer(1 / 30, function()
-        if not button_held and steps == 0 or not list_drawn then
-            if scroll_timer then
-                scroll_timer:kill()
-                scroll_timer = nil
-            end
-            return
-        end
-
         local elapsed = mp.get_time() - start_time
         local t = elapsed / fling_duration
 
@@ -710,22 +718,25 @@ function smooth_scroll(velocity)
 
         -- Determine the number of steps based on the current distance
         local steps = (velocity.y < 0 and math.ceil(current_distance) or math.floor(current_distance))
-
-        if steps ~= 0 then
-            start, choice = select(list, initial_start, choice, steps)
-            initial_start = start
-            total_distance = total_distance - steps
-        else
+        if steps == 0 or not list_drawn then
             if scroll_timer then
                 scroll_timer:kill()
                 scroll_timer = nil
             end
+            if scrolling_active then
+                cancel_scroll()
+            end
+            return
         end
+
+        start, choice = select(list, initial_start, choice, steps)
+        initial_start = start
+        total_distance = total_distance - steps
     end)
 end
 
 function on_mouse_move(event, mouse_pos)
-    if not button_held then return end
+    if not initial_x_position or not initial_y_position then return end
 
     local scroll_threshold = 50
     local horizontal_drag_threshold = 40
@@ -736,10 +747,10 @@ function on_mouse_move(event, mouse_pos)
     local delta_y = y - initial_y_position
 
     -- Detect initial horizontal movement and enable dragging
-    if not block_dragging and math.abs(delta_x) > horizontal_drag_threshold then
-        dragging = true
-        button_held = false
+    if default_drag_check and not mp.get_property_native("fullscreen") and not mp.get_property_native("window-maximized") and
+        not block_dragging and math.abs(delta_x) > horizontal_drag_threshold then
         set_dragging(true)
+        mp.command("begin-vo-dragging")
         mp.unobserve_property(on_mouse_move)
         return
     end
@@ -783,14 +794,13 @@ function handle_mouse_event(event, mouse_pos)
         local initial_click_pos = {x = mouse_pos.x, y = mouse_pos.y}
         local osd_width, osd_height = mp.get_osd_size()
 
-        button_held = true
         set_dragging(false)
 
-        if (initial_click_pos.x == 0 and initial_click_pos.y == 0) or 
-           (not is_within_central_region(initial_click_pos.x, initial_click_pos.y, osd_width, osd_height) and 
-            not mp.get_property_bool("fullscreen")) then
-            button_held = false
+        if (initial_click_pos.x == 0 and initial_click_pos.y == 0) or
+           (not is_within_central_region(initial_click_pos.x, initial_click_pos.y, osd_width, osd_height) and
+            not mp.get_property_native("fullscreen") and not mp.get_property_native("window-maximized")) then
             set_dragging(true)
+            mp.command("begin-vo-dragging")
         else
             mouse_history = {}
             initial_y_position = mouse_pos.y
@@ -805,15 +815,8 @@ function handle_mouse_event(event, mouse_pos)
         end
 
     elseif event == "up" then
-        if dragging then 
-            dragging = false 
-        else
-            button_held = false
-            block_dragging = false
-            set_dragging(true)
-            mp.unobserve_property(on_mouse_move)
-        end
-
+        block_dragging = false
+        mp.unobserve_property(on_mouse_move)
         local velocity = calculate_velocity()
         smooth_scroll(velocity)
     end
@@ -945,6 +948,13 @@ if o.double_menu_key then
     end, {complex=true})
 else
     mp.add_key_binding(o.display_bind, "display-recent", display_list)
+end
+
+-- Suppress scroll on position change during fullscreen toggling
+if o.mouse_drag_scrolling then
+    mp.observe_property("fullscreen", "bool", function()
+        if list_drawn then initial_x_position, initial_y_position = nil, nil end
+    end)
 end
 
 local function run_idle()
