@@ -675,7 +675,7 @@ function calculate_velocity()
 
     for i = #mouse_history, 1, -1 do
         local snap = mouse_history[i]
-        if current_time - snap.time > 0.1 then
+        if current_time - snap.time > 0.1 and initial_y_position then
             local y_diff = initial_y_position - snap.y
             local time_diff = current_time - snap.time
             if time_diff > 0.001 then
