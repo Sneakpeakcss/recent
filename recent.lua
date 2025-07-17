@@ -549,6 +549,12 @@ function open_menu(lists)
     uosc_menu_opened = true
 end
 
+function reset()
+    list = read_log_table()
+    start, choice = 0, 0
+    draw_list(list, start, choice)
+end
+
 function search()
     is_search_open = true
     input.get({
@@ -557,9 +563,9 @@ function search()
         closed = function() is_search_open = false end,
         submit = function(user_input)
             if user_input == "" or user_input == '""' then
-                list = read_log_table()
-                start, choice = 0, 0
-                draw_list(list, start, choice)
+                if list == filtered_list then
+                    reset()
+                end
                 input.terminate()
                 is_search_open = false
                 return
@@ -875,8 +881,10 @@ function display_list()
     mp.add_forced_key_binding("SHIFT+KP_ENTER", "recent-SHIFT_KP_ENTER", function() load(list, start, choice, "append-play") end)
     mp.add_forced_key_binding("Space",          "recent-Space",          function() load(list, start, choice)                end)
     -- Exit keys
-    mp.add_forced_key_binding("BS",  "recent-BS",  unbind)
     mp.add_forced_key_binding("ESC", "recent-ESC", unbind)
+    mp.add_forced_key_binding("BS",  "recent-BS", function()
+        (list == filtered_list and reset or unbind)()
+    end)
     -- Search key
     mp.add_forced_key_binding("CTRL+SHIFT+f", "recent-CTRL+SHIFT+f", search)
     -- Mouse controls
@@ -885,7 +893,7 @@ function display_list()
         mp.add_forced_key_binding("WHEEL_DOWN",     "recent-WDOWN",      function() start, choice = select(list, start, choice, 1)  end)
         mp.add_forced_key_binding("MBTN_MID",       "recent-MMID",       function() load(list, start, choice)                       end)
         mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID", function() load(list, start, choice, "append-play")        end)
-        mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",     unbind)
+        mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",     function() (list == filtered_list and reset or unbind)()   end)
     end
     if o.mouse_drag_scrolling then
         mp.add_key_binding("MBTN_LEFT", "recent-MBTN_LEFT", function(keypress)
