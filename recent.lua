@@ -28,6 +28,7 @@ local o = {
     border_size = 0.7,
     bold_text = false,
     hi_color = "FFCF46",                   -- Highlight color in RRGGBB
+    center_list = true,
     ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
  
     list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
@@ -356,6 +357,8 @@ function draw_list(list, start, choice)
     local total_lines_hs = format_number(total_lines,  #tostring(total_lines))
     local current_page   = format_number(current_page, #tostring(total_pages))
     local total_pages_hs = format_number(total_pages,  #tostring(total_pages))
+
+    if o.center_list then msg = msg .. "{\\an7\\pos(25,111)}" end
 
     -- Display additional information above the list
     msg = msg .. string.format("%sLine:%s %s/%s %sPage:%s %s/%s\\N",
