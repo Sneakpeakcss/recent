@@ -8,30 +8,30 @@ local o = {
     hide_same_dir = false,                 -- Display only the latest file from each directory
     auto_run_idle = true,                  -- Runs automatically when --idle
     write_watch_later = true,              -- Write watch later for current file when switching
-    display_bind = "`",                    -- Display menu bind
+    display_bind = "tab",                  -- Display menu bind
 
     mouse_controls = true,                 -- Middle click: Select; Right click: Exit; Scroll wheel: Up/Down
-    mouse_drag_scrolling = false,          -- Enable mouse drag scrolling
-    drag_deadzone_margin = "0,0,0,0",      -- Dragging deadzones in percentages: top,right,bottom,left
+    mouse_drag_scrolling = true,           -- Enable mouse drag scrolling
+    drag_deadzone_margin = "15,0,0,0",     -- Dragging deadzones in percentages: top,right,bottom,left
 
     log_path = "history.log",              -- Reads from config directory or an absolute path
     date_format = "%d/%m/%y %X",           -- Date format in the log (see lua date formatting)
 
     show_paths = false,                    -- Show file paths instead of media-title
-    slice_longfilenames = false,           -- Slice long filenames, and how many chars to show
-    slice_longfilenames_amount = 100,
-    slice_longfilenames_amount_uosc = 100,
-    split_paths = true,                    -- Split paths to only show the file or show the full path
+    split_paths = false,                   -- Split paths to only show the file or show the full path
+    slice_longfilenames = true,            -- Slice long filenames, and how many chars to show
+    slice_longfilenames_amount = 77,
+    slice_longfilenames_amount_uosc = 120,
 
-    font_scale = 50,
     font_size = 55,
-    border_size = 0.7,
-    bold_text = false,
+    font_scale = 50,
+    border_size = 1.65,
+    bold_text = true,
     hi_color = "FFCF46",                   -- Highlight color in RRGGBB
     center_list = true,
-    ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
+    ellipsis = true,                       -- Draw ellipsis at start/end denoting omitted entries
  
-    list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
+    list_show_amount = 1000,               -- Change maximum number to show items on integrated submenus in uosc
     list_show_amount_dyn_menu = 0,         -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
     use_uosc_menu = false,                 -- Use uosc menu as default
     double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
