@@ -38,6 +38,7 @@ local o = {
 (require "mp.options").read_options(o, _, function() end)
 local utils = require("mp.utils")
 local input = require("mp.input")
+local overlay = mp.create_osd_overlay("ass-events")
 o.log_path = utils.join_path(mp.find_config_file("."), o.log_path)
 
 local cur_title, cur_path
@@ -210,7 +211,7 @@ function unbind()
     }) do
         mp.remove_key_binding("recent-" .. key)
     end
-    mp.set_osd_ass(0, 0, "")
+    overlay:remove()
     list_drawn = false
     
     if scrolling_active then cancel_scroll() end
@@ -409,7 +410,8 @@ function draw_list(list, start, choice)
     if o.ellipsis then
         msg = msg .. (start+10 < size and "..." or "\\h")
     end
-    mp.set_osd_ass(0, 0, msg)
+    overlay.data = msg
+    overlay:update()
 end
 
 function page_move(list, start, choice, direction)
