@@ -24,10 +24,12 @@ local o = {
     split_paths = true,                    -- Split paths to only show the file or show the full path
 
     font_scale = 50,
+    font_size = 55,
     border_size = 0.7,
+    bold_text = false,
     hi_color = "FFCF46",                   -- Highlight color in RRGGBB
-
     ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
+ 
     list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
     list_show_amount_dyn_menu = 0,        -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
     use_uosc_menu = false,                 -- Use uosc menu as default
@@ -329,9 +331,10 @@ end
 
 -- Display list on OSD and terminal
 function draw_list(list, start, choice)
-    local hidden_unicode = "{\\fscx0}{\\fscy0}\u{2024}"   -- Workaround for font issues when emoji appears before certain symbols while using default mpv font
-    local msg = hidden_unicode .. string.format("{\\fscx%f}{\\fscy%f}{\\bord%f}",
-                o.font_scale, o.font_scale, o.border_size)
+    local font_bold  = o.bold_text and "1" or "0"
+    local hidden_unicode = "{\\fscx0}{\\fscy0}\u{2024}" -- Workaround for font issues when emoji appears before certain symbols while using default mpv font
+    local msg = hidden_unicode .. string.format("{\\fscx%f}{\\fscy%f}{\\fs%d}{\\bord%f}{\\b%d}",
+                o.font_scale, o.font_scale, o.font_size, o.border_size, font_bold)
     local hi_start = string.format("{\\1c&H%s}", o.hi_color:gsub("(%x%x)(%x%x)(%x%x)","%3%2%1"))
     local hi_end = "{\\1c&HFFFFFF}"
     local hi_end = hi_end:gsub("{\\1c&H(%x%x)(%x%x)(%x%x)}","{\\1c&H%3%2%1}")
