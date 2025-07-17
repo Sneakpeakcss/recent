@@ -155,7 +155,7 @@ function get_ext(path)
     elseif is_protocol(path) then
         return path:match("^(%a[%w.+-]-)://"):upper()
     else
-        return path:match(".+%.(%w+)$"):upper()
+        return (path:match(".+%.(%w+)$") or "N/A"):upper()
     end
 end
 
