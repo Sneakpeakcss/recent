@@ -48,7 +48,7 @@ local is_windows = package.config:sub(1,1) == "\\"
 
 function parse_custom_colors(custom_colors)
     local parsed_tags = {}
-    local audio_extensions = { "aac", "aiff", "ape", "au", "flac", "m4a", "mka", "mp3", "oga", "ogg", "ogm", "opus", "wav", "wma" }
+    local audio_extensions = mp.get_property_native("audio-exts") or {}
 
     local function create_tag(pattern, prefix, prefixColor, highlightColor)
         return {
