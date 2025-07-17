@@ -328,10 +328,9 @@ end
 
 -- Display list on OSD and terminal
 function draw_list(list, start, choice)
-    local font_scale = o.font_scale * (display_scale or 1)
     local hidden_unicode = "{\\fscx0}{\\fscy0}\u{2024}"   -- Workaround for font issues when emoji appears before certain symbols while using default mpv font
     local msg = hidden_unicode .. string.format("{\\fscx%f}{\\fscy%f}{\\bord%f}",
-                font_scale, font_scale, o.border_size)
+                o.font_scale, o.font_scale, o.border_size)
     local hi_start = string.format("{\\1c&H%s}", o.hi_color:gsub("(%x%x)(%x%x)(%x%x)","%3%2%1"))
     local hi_end = "{\\1c&HFFFFFF}"
     local hi_end = hi_end:gsub("{\\1c&H(%x%x)(%x%x)(%x%x)}","{\\1c&H%3%2%1}")
@@ -343,7 +342,7 @@ function draw_list(list, start, choice)
     local total_pages  = math.ceil(total_lines / 10)
 
     local ss = "{\\fscx0}"
-    local se = string.format("{\\fscx%f}", font_scale)
+    local se = string.format("{\\fscx%f}", o.font_scale)
     local hs = ss .. string.char(0xE2, 0x80, 0x8A) .. se
 
     -- Pad numbers with leading zeros and add hairspace before each digit to avoid width shifting in certain cases: "11" "111" "1111"
@@ -957,14 +956,6 @@ if o.mouse_drag_scrolling then
     end)
 end
 
-local function run_idle()
-    mp.observe_property("idle-active", "bool", function(_, v)
-        if o.auto_run_idle and v and not use_uosc_menu then
-            display_list()
-        end
-    end)
-end
-
 -- mpv-menu-plugin integration
 mp.register_script_message('menu-ready', function()
     dyn_menu.ready = true
@@ -983,12 +974,13 @@ mp.register_script_message("recent-uosc-closed", function()
     long_press = false
 end)
 
-mp.observe_property("display-hidpi-scale", "native", function(_, scale)
-    if scale then
-        display_scale = scale
-        run_idle()
-    end
-end)
+if o.auto_run_idle then
+    mp.observe_property("idle-active", "bool", function(_, v)
+        if v and not use_uosc_menu then 
+            display_list() 
+        end
+    end)
+end
 
 mp.register_event("file-loaded", function()
     if is_search_open then 
