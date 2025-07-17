@@ -32,7 +32,7 @@ local o = {
     ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
  
     list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
-    list_show_amount_dyn_menu = 0,        -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
+    list_show_amount_dyn_menu = 0,         -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
     use_uosc_menu = false,                 -- Use uosc menu as default
     double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
     custom_colors = "",                    -- User defined Prefix/Colors (more details in config)
@@ -82,7 +82,7 @@ custom_colors = parse_custom_colors(o.custom_colors)
 function is_protocol(path)
     return type(path) == 'string' and (
         path:match('^%a[%a%d-_]+://') ~= nil
-        or (is_windows and path:match("[\\/]?-$") and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))   -- streamlink doesn't provide anything beside a single hyphen in stdin mode
+        or (is_windows and path:match("[\\/]?-$") and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))
         or (is_windows and path:find("Streamlink Twitch GUI"))
     )
 end
@@ -353,17 +353,17 @@ function draw_list(list, start, choice)
     -- Pad numbers with leading zeros and add hairspace before each digit to avoid width shifting in certain cases: "11" "111" "1111"
     local function format_number(n, width) return (string.format("%0" .. width .. "d", n)):gsub("%d", hs .. "%0") end
 
-    local current_line   = format_number(current_line, #tostring(total_lines))
-    local total_lines_hs = format_number(total_lines,  #tostring(total_lines))
-    local current_page   = format_number(current_page, #tostring(total_pages))
-    local total_pages_hs = format_number(total_pages,  #tostring(total_pages))
+    current_line = format_number(current_line, #tostring(total_lines))
+    total_lines  = format_number(total_lines,  #tostring(total_lines))
+    current_page = format_number(current_page, #tostring(total_pages))
+    total_pages  = format_number(total_pages,  #tostring(total_pages))
 
     if o.center_list then msg = msg .. "{\\an7\\pos(25,111)}" end
 
     -- Display additional information above the list
     msg = msg .. string.format("%sLine:%s %s/%s %sPage:%s %s/%s\\N",
-                        hi_start, hi_end, current_line, total_lines_hs,
-                        hi_start, hi_end, current_page, total_pages_hs) .. (not o.ellipsis and "\\h\\N\\N" or "")
+                        hi_start, hi_end, current_line, total_lines,
+                        hi_start, hi_end, current_page, total_pages) .. (not o.ellipsis and "\\h\\N\\N" or "")
     if o.ellipsis then
         if start ~= 0 then
             msg = msg.."..."
@@ -392,7 +392,8 @@ function draw_list(list, start, choice)
             for _, tag in ipairs(custom_colors) do
                 if list[size-start-i+1].path:lower():match(tag.pattern) then
                     if tag.prefix and tag.prefix ~= "" then
-                        prefix = string.format("{\\q2}{\\1c&H%s}%s ", tag.prefixColor ~= "" and tag.prefixColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1") or "00FF00", tag.prefix) .. hi_end
+                        prefix = string.format("{\\q2}{\\1c&H%s}%s ", tag.prefixColor ~= "" and
+                                 tag.prefixColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1") or "00FF00", tag.prefix) .. hi_end
                         prefix_length = tag.prefix
                     end
                     highlightColor = tag.highlightColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1")
@@ -405,9 +406,9 @@ function draw_list(list, start, choice)
         local hi_start = highlightColor ~= "" and string.format("{\\1c&H%s}", highlightColor) or hi_start
 
         if i == choice+1 then
-            msg = msg..hi_start.."("..key..")  "..(prefix ~= "" and prefix..hi_start or "") ..strip_title(p, nil, prefix_length).."\\N\\N"..hi_end
+            msg = msg..hi_start.."("..key..")  "..(prefix ~= "" and prefix..hi_start or "")..strip_title(p, nil, prefix_length).."\\N\\N"..hi_end
         else
-            msg = msg.."("..key..")  "          ..(prefix ~= "" and prefix or "")           ..strip_title(p, nil, prefix_length).."\\N\\N"
+            msg = msg.."("..key..")  "..(prefix ~= "" and prefix or "")..strip_title(p, nil, prefix_length).."\\N\\N"
         end
         if not list_drawn then
             print("("..key..") "..p)
@@ -861,18 +862,18 @@ function display_list()
     list_drawn = true
 
     -- Navigation keys
-    mp.add_forced_key_binding("UP",                 "recent-UP",             function() start, choice = select(list, start, choice, -1)      end, {repeatable=true})
-    mp.add_forced_key_binding("DOWN",               "recent-DOWN",           function() start, choice = select(list, start, choice, 1)       end, {repeatable=true})
-    mp.add_forced_key_binding("PGUP",               "recent-PGUP",           function() start, choice = page_move(list, start, choice, -10)  end, {repeatable=true})
-    mp.add_forced_key_binding("PGDWN",              "recent-PGDWN",          function() start, choice = page_move(list, start, choice, 10)   end, {repeatable=true})
-    mp.add_forced_key_binding("HOME",               "recent-HOME",           function() start, choice = select(list, start, choice, "start") end)
-    mp.add_forced_key_binding("END",                "recent-END",            function() start, choice = select(list, start, choice, "end")   end)
+    mp.add_forced_key_binding("UP",    "recent-UP",    function() start, choice = select(list, start, choice, -1)      end, {repeatable=true})
+    mp.add_forced_key_binding("DOWN",  "recent-DOWN",  function() start, choice = select(list, start, choice, 1)       end, {repeatable=true})
+    mp.add_forced_key_binding("PGUP",  "recent-PGUP",  function() start, choice = page_move(list, start, choice, -10)  end, {repeatable=true})
+    mp.add_forced_key_binding("PGDWN", "recent-PGDWN", function() start, choice = page_move(list, start, choice, 10)   end, {repeatable=true})
+    mp.add_forced_key_binding("HOME",  "recent-HOME",  function() start, choice = select(list, start, choice, "start") end)
+    mp.add_forced_key_binding("END",   "recent-END",   function() start, choice = select(list, start, choice, "end")   end)
     -- Selection keys
-    mp.add_forced_key_binding("ENTER",              "recent-ENTER",          function() load(list, start, choice)                            end)
-    mp.add_forced_key_binding("KP_ENTER",           "recent-KP_ENTER",       function() load(list, start, choice)                            end)
-    mp.add_forced_key_binding("SHIFT+ENTER",        "recent-SHIFT_ENTER",    function() load(list, start, choice, "append-play")             end)
-    mp.add_forced_key_binding("SHIFT+KP_ENTER",     "recent-SHIFT_KP_ENTER", function() load(list, start, choice, "append-play")             end)
-    mp.add_forced_key_binding("Space",              "recent-Space",          function() load(list, start, choice)                            end)
+    mp.add_forced_key_binding("ENTER",          "recent-ENTER",          function() load(list, start, choice)                end)
+    mp.add_forced_key_binding("KP_ENTER",       "recent-KP_ENTER",       function() load(list, start, choice)                end)
+    mp.add_forced_key_binding("SHIFT+ENTER",    "recent-SHIFT_ENTER",    function() load(list, start, choice, "append-play") end)
+    mp.add_forced_key_binding("SHIFT+KP_ENTER", "recent-SHIFT_KP_ENTER", function() load(list, start, choice, "append-play") end)
+    mp.add_forced_key_binding("Space",          "recent-Space",          function() load(list, start, choice)                end)
     -- Exit keys
     mp.add_forced_key_binding("BS",  "recent-BS",  unbind)
     mp.add_forced_key_binding("ESC", "recent-ESC", unbind)
@@ -880,11 +881,11 @@ function display_list()
     mp.add_forced_key_binding("CTRL+SHIFT+f", "recent-CTRL+SHIFT+f", search)
     -- Mouse controls
     if o.mouse_controls then
-        mp.add_forced_key_binding("WHEEL_UP",       "recent-WUP",            function() start, choice = select(list, start, choice, -1) end)
-        mp.add_forced_key_binding("WHEEL_DOWN",     "recent-WDOWN",          function() start, choice = select(list, start, choice, 1)  end)
-        mp.add_forced_key_binding("MBTN_MID",       "recent-MMID",           function() load(list, start, choice)                       end)
-        mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID",     function() load(list, start, choice, "append-play")        end)
-        mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",         unbind)
+        mp.add_forced_key_binding("WHEEL_UP",       "recent-WUP",        function() start, choice = select(list, start, choice, -1) end)
+        mp.add_forced_key_binding("WHEEL_DOWN",     "recent-WDOWN",      function() start, choice = select(list, start, choice, 1)  end)
+        mp.add_forced_key_binding("MBTN_MID",       "recent-MMID",       function() load(list, start, choice)                       end)
+        mp.add_forced_key_binding("SHIFT+MBTN_MID", "recent-SHIFT_MMID", function() load(list, start, choice, "append-play")        end)
+        mp.add_forced_key_binding("MBTN_RIGHT",     "recent-MRIGHT",     unbind)
     end
     if o.mouse_drag_scrolling then
         mp.add_key_binding("MBTN_LEFT", "recent-MBTN_LEFT", function(keypress)
