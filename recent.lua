@@ -80,9 +80,10 @@ end
 custom_colors = parse_custom_colors(o.custom_colors)
 
 function is_protocol(path)
+    local directory = mp.get_property_native("working-directory")
     return type(path) == 'string' and (
         path:match('^%a[%a%d-_]+://') ~= nil
-        or (is_windows and path:match("[\\/]?-$") and mp.get_property_native("working-directory"):find("Streamlink Twitch GUI"))
+        or (is_windows and path:match("[\\/]?-$") and directory:find("Streamlink Twitch GUI"))
         or (is_windows and path:find("Streamlink Twitch GUI"))
     )
 end
@@ -154,7 +155,7 @@ end
 function get_ext(path)
     if path:find("youtu%.?be") then
         return "YTB"
-    elseif is_windows and path:find("Streamlink Twitch GUI") then
+    elseif (is_windows and path:find("Streamlink Twitch GUI")) or path:match("twitch%.tv/([^/]+)") then
         return "LIVE"
     elseif is_protocol(path) then
         return path:match("^(%a[%w.+-]-)://"):upper()
@@ -181,20 +182,23 @@ end
 
 function get_path()
     local path = mp.get_property("path")
-    local title = mp.get_property("media-title"):gsub("\"", "")
-    local working_dir = mp.get_property_native("working-directory")
     if not path then return end
-    if is_windows and working_dir:find("Streamlink Twitch GUI") then
-        local channel_name = title:match("twitch%.tv/([^/]+)")
-        local titleStreamlink = mp.get_property("title"):gsub("\"", ""):match("(.*)    —    Viewers") or "Streamlink - " .. title
-        return titleStreamlink, working_dir .. "\\streamlink-twitch-gui.exe " .. "\"--launch=" .. channel_name .. " --tray\"" .. os.date(" %d/%m/%y")
+    local title = mp.get_property("media-title"):gsub("\"", "")
+    local directory = mp.get_property_native("working-directory")
+    -- yt-dlp / Streamlink Twitch GUI(Windows only) 
+    local ch_name = (is_windows and directory:find("Streamlink Twitch GUI") and title or path):match("twitch%.tv/([^/]+)")
+    if is_windows and directory:find("Streamlink Twitch GUI") then
+        title = mp.get_property("title"):gsub("\"", ""):match("^(.-)    —    Viewers") or "Streamlink - " .. title
+        local cmd = string.format('%s\\streamlink-twitch-gui.exe "--launch=%s --tray"', directory, ch_name or "")
+        return title, cmd .. os.date(" %d/%m/%y")
+    elseif is_protocol(path) and ch_name then
+        local r = mp.get_property_native("user-data/mpv/ytdl/json-subprocess-result")
+        local ytdl = r and r.stdout and utils.parse_json(r.stdout)
+        if ytdl and ytdl.uploader and ytdl.uploader:lower() == ch_name then
+            return ytdl.uploader .. " - " .. (ytdl.description or ""), path
+        end
     end
-    if is_protocol(path) then
-        return title, path
-    else
-        local path = normalize(path)
-        return title, path
-    end
+    return title, is_protocol(path) and path or normalize(path)
 end
 
 function unbind()
