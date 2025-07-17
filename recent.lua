@@ -29,7 +29,7 @@ local o = {
 
     ellipsis = false,                      -- Draw ellipsis at start/end denoting omitted entries
     list_show_amount = 20,                 -- Change maximum number to show items on integrated submenus in uosc
-    list_show_amount_dyn_menu = 20,        -- Change maximum number to show items on integrated submenus in mpv-menu-plugin
+    list_show_amount_dyn_menu = 0,        -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
     use_uosc_menu = false,                 -- Use uosc menu as default
     double_menu_key = true,                -- Open default menu by keypress, open uosc menu when holding it (second hold switches to path menu)
     custom_colors = "",                    -- User defined Prefix/Colors (more details in config)
@@ -321,7 +321,7 @@ function write_log(delete)
         f:write(table.concat(lines, "\n") .. "\n")
         f:close()
     end
-    if dyn_menu.ready then
+    if dyn_menu.ready and o.list_show_amount_dyn_menu ~= 0 then
         update_dyn_menu_items()
     end
 end
@@ -958,8 +958,10 @@ end
 
 -- mpv-menu-plugin integration
 mp.register_script_message('menu-ready', function()
-    dyn_menu.ready = true
-    update_dyn_menu_items()
+    if o.list_show_amount_dyn_menu ~= 0 then
+        dyn_menu.ready = true
+        update_dyn_menu_items()
+    end
 end)
 
 -- check if uosc is running
