@@ -30,6 +30,7 @@ local o = {
     hi_color = "FFCF46",                   -- Highlight color in RRGGBB
     center_list = true,
     ellipsis = true,                       -- Draw ellipsis at start/end denoting omitted entries
+    alt_digits = true,                     -- Use math digits for number prefix
  
     list_show_amount = 1000,               -- Change maximum number to show items on integrated submenus in uosc
     list_show_amount_dyn_menu = 0,         -- Change maximum number to show items on integrated submenus in mpv-menu-plugin. '0' to turn off. 
@@ -336,7 +337,7 @@ end
 
 -- Display list on OSD and terminal
 function draw_list(list, start, choice)
-    local font_bold  = o.bold_text and "1" or "0"
+    local font_bold = o.bold_text and "1" or "0"
     local hidden_unicode = "{\\fscx0}{\\fscy0}\u{2024}" -- Workaround for font issues when emoji appears before certain symbols while using default mpv font
     local msg = hidden_unicode .. string.format("{\\fscx%f}{\\fscy%f}{\\fs%d}{\\bord%f}{\\b%d}",
                 o.font_scale, o.font_scale, o.font_size, o.border_size, font_bold)
@@ -374,18 +375,16 @@ function draw_list(list, start, choice)
         end
         msg = msg.."\\h\\N\\N"
     end
+    local lp, rp = o.bold_text and "❪" or "⟮", o.bold_text and "❫" or "⟯"
     for i=1, math.min(10, size-start), 1 do
         local key = i % 10
-        local p
-        if o.show_paths then
-            if o.split_paths or is_protocol(list[size-start-i+1].path) then
-                p = get_filename(list[size-start-i+1])
-            else
-                p = list[size-start-i+1].path or ""
-            end
-        else
-            p = list[size-start-i+1].title or list[size-start-i+1].path or ""
-        end
+        local digit = o.alt_digits and lp .. string.char(0xF0, 0x9D, 0x9F, 0x8E + key) .. rp or "(" .. key .. ")"
+
+        local item  = list[size-start-i+1]
+        local split = o.split_paths or is_protocol(item.path)
+        local p = o.show_paths
+            and (split and get_filename(item) or (item.path or ""))
+            or (item.title or item.path or "")
         p = p:gsub("\\", "\\\239\187\191"):gsub("{", "\\{"):gsub("^ ", "\\h")
 
         -- Check if the path contains any custom tags
@@ -394,7 +393,7 @@ function draw_list(list, start, choice)
         local highlightColor = ""
         if o.custom_colors then
             for _, tag in ipairs(custom_colors) do
-                if list[size-start-i+1].path:lower():match(tag.pattern) then
+                if item.path:lower():match(tag.pattern) then
                     if tag.prefix and tag.prefix ~= "" then
                         prefix = string.format("{\\q2}{\\1c&H%s}%s ", tag.prefixColor ~= "" and
                                  tag.prefixColor:gsub("(%x%x)(%x%x)(%x%x)", "%3%2%1") or "00FF00", tag.prefix) .. hi_end
@@ -409,11 +408,12 @@ function draw_list(list, start, choice)
         -- Apply the highlightColor (if specified)
         local hi_start = highlightColor ~= "" and string.format("{\\1c&H%s}", highlightColor) or hi_start
 
-        if i == choice+1 then
-            msg = msg..hi_start.."("..key..")  "..(prefix ~= "" and prefix..hi_start or "")..strip_title(p, nil, prefix_length).."\\N\\N"..hi_end
-        else
-            msg = msg.."("..key..")  "..(prefix ~= "" and prefix or "")..strip_title(p, nil, prefix_length).."\\N\\N"
-        end
+        local sel = (i == choice+1)
+        local sel_start = sel and hi_start or ""
+        local sel_end   = sel and hi_end or ""
+        local pre = prefix ~= "" and prefix .. sel_start or ""
+        msg = msg .. sel_start .. digit .. "  " .. pre .. strip_title(p, nil, prefix_length) .. "\\N\\N" .. sel_end
+
         if not list_drawn then
             print("("..key..") "..p)
         end
