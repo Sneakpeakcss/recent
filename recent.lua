@@ -768,7 +768,9 @@ function on_mouse_move(event, mouse_pos)
     if default_drag_check and not mp.get_property_native("fullscreen") and not mp.get_property_native("window-maximized") and
         not block_dragging and math.abs(delta_x) > horizontal_drag_threshold then
         set_dragging(true)
-        mp.command("begin-vo-dragging")
+        if scrolling_active then
+            mp.command("begin-vo-dragging")
+        end
         mp.unobserve_property(on_mouse_move)
         return
     end
@@ -818,7 +820,9 @@ function handle_mouse_event(event, mouse_pos)
            (not is_within_central_region(initial_click_pos.x, initial_click_pos.y, osd_width, osd_height) and
             not mp.get_property_native("fullscreen") and not mp.get_property_native("window-maximized")) then
             set_dragging(true)
-            mp.command("begin-vo-dragging")
+            if scrolling_active then
+                mp.command("begin-vo-dragging")
+            end
         else
             mouse_history = {}
             initial_y_position = mouse_pos.y
