@@ -67,6 +67,7 @@ function parse_custom_colors(custom_colors)
     for entry in custom_colors:gmatch("[^,]+") do
         local pattern, prefix, prefixColor, highlightColor = entry:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
         if pattern == "{audio}" then
+            audio_prefix = (prefix ~= '""') and prefix or nil
             local base = is_windows and "^%a:[/\\].*%." or "^/.*%."
             for _, ext in ipairs(audio_extensions) do
                 table.insert(parsed_tags, create_tag(base .. ext .. "$", prefix, prefixColor, highlightColor))
@@ -573,6 +574,10 @@ function search()
                 input.terminate()
                 is_search_open = false
                 return
+            end
+
+            if audio_prefix then
+                user_input = user_input:gsub("{audio}", audio_prefix)
             end
 
             local function escape_pattern(str)
