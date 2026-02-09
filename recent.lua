@@ -415,7 +415,7 @@ function draw_list(list, start, choice)
         local pre = prefix ~= "" and prefix .. sel_start or ""
         msg = msg .. sel_start .. digit .. "  " .. pre .. strip_title(p, nil, prefix_length) .. "\\N\\N" .. sel_end
 
-        if not list_drawn then
+        if not list_drawn and mp.get_property_native("terminal") then
             print("("..key..") "..p)
         end
     end
