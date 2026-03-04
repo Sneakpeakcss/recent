@@ -1054,6 +1054,11 @@ function file_load(from_hook)
     end
 end
 
+mp.add_key_binding(nil, 'recent-search', function()
+    display_list()
+    search()
+end)
+
 mp.add_key_binding(o.save_bind, "recent-save", function()
     write_log(false)
     mp.osd_message("Saved entry to log")
