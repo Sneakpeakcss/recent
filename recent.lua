@@ -243,7 +243,7 @@ end
 function read_log_table()
     return read_log(function(line)
         local t, p
-        t, p = line:match("^.-\"(.-)\" | (.*)$")
+        t, p = line:match('^.-"(.-)" | (.-)%s*$')
         return {title = t, path = p}
     end)
 end
