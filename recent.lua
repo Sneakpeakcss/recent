@@ -1014,14 +1014,16 @@ if o.auto_run_idle then
     end)
 end
 
-mp.register_event("file-loaded", function()
+mp.register_event("start-file", function()
     if is_search_open then 
         input.terminate()
         is_search_open = false
     end
     unbind()
-    cur_title, cur_path = get_path()
+end)
 
+mp.register_event("file-loaded", function()
+    cur_title, cur_path = get_path()
     -- Use the original hook method if the skip past value is changed
     if o.auto_save_skip_past == 100 then
         file_load(false)
