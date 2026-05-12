@@ -305,7 +305,7 @@ end
 -- Write path to log on file end
 -- removing duplicates along the way
 function write_log(delete)
-    if not cur_path or (cur_path:match("bd://") or cur_path:match("dvd://")
+    if not cur_path or cur_path == "-" or (cur_path:match("bd://") or cur_path:match("dvd://")
     or cur_path:match("dvb://") or cur_path:match("cdda://")) then
         return
     end
