@@ -1039,8 +1039,7 @@ function file_load(from_hook)
     if not o.auto_save then return end
 
     local save = function()
-        local pos = mp.get_property("percent-pos")
-        if not pos then return end
+        local pos = mp.get_property("percent-pos", 0)
         if tonumber(pos) <= o.auto_save_skip_past then
             write_log(false)
         else
