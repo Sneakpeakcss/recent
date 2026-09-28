@@ -188,7 +188,7 @@ function get_path()
     local title = mp.get_property("media-title"):gsub("\"", "")
     local directory = mp.get_property_native("working-directory")
     -- yt-dlp / Streamlink Twitch GUI(Windows only) 
-    local ch_name = (is_windows and directory:find("Streamlink Twitch GUI") and title or path):match("twitch%.tv/([^/]+)")
+    local ch_name = (is_windows and directory:find("Streamlink Twitch GUI") and title or path):match("twitch%.tv/([^/]+)/?$")
     if is_windows and directory:find("Streamlink Twitch GUI") then
         title = mp.get_property("title"):gsub("\"", ""):match("^(.-)    —    Viewers") or "Streamlink - " .. title
         local cmd = string.format('%s\\streamlink-twitch-gui.exe "--launch=%s --tray"', directory, ch_name or "")
