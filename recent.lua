@@ -224,6 +224,10 @@ function unbind()
     list_drawn = false
     
     if scrolling_active then cancel_scroll() end
+    if doubleclick_timer then
+        doubleclick_timer:kill() doubleclick_timer = nil
+        mp.set_property("input-doubleclick-time", default_doubleclick_time)
+    end
     default_drag_check, default_doubleclick_time, dragging_state = nil, nil, nil
 end
 
@@ -668,21 +672,60 @@ function set_dragging(state)
     dragging_state = state
 
     default_drag_check = default_drag_check or mp.get_property_native("window-dragging")
-    default_doubleclick_time = default_doubleclick_time or mp.get_property("input-doubleclick-time")
+    default_doubleclick_time = default_doubleclick_time or mp.get_property_number("input-doubleclick-time", 300)
 
     if default_drag_check then
         mp.set_property_native("window-dragging", state)
         mp.set_property_native("input-builtin-dragging", state)
     end
 
-    if default_doubleclick_time ~= "0" then
-        mp.set_property("input-doubleclick-time", state and default_doubleclick_time or "0")
+    if default_doubleclick_time ~= 0 then
+        if not state then
+            -- Cancel any pending restore before starting a new drag
+            if doubleclick_timer then
+                doubleclick_timer:kill()
+                doubleclick_timer = nil
+            end
+            mp.set_property("input-doubleclick-time", "0")
+        end
     end
 end
 
 function cancel_scroll()
+    local was_scrolling = scrolling_active
+
     set_dragging(true)
     scrolling_active = false
+
+    if default_doubleclick_time == 0 then
+        return
+    end
+
+    -- Restore immediately for clicks that never started scrolling
+    if not was_scrolling then
+        mp.set_property("input-doubleclick-time", default_doubleclick_time)
+        return
+    end
+
+    -- Keep the doubleclick window tied to the initial press
+    local window = default_doubleclick_time / 1000
+    local remaining = (last_drag_press or 0) + window - mp.get_time()
+
+    if remaining > 0 then
+        mp.set_property("input-doubleclick-time", "0")
+
+        if doubleclick_timer then
+            doubleclick_timer:kill()
+            doubleclick_timer = nil
+        end
+
+        doubleclick_timer = mp.add_timeout(remaining, function()
+            mp.set_property("input-doubleclick-time", default_doubleclick_time)
+            doubleclick_timer = nil
+        end)
+    else
+        mp.set_property("input-doubleclick-time", default_doubleclick_time)
+    end
 end
 
 function add_mouse_history(y)
@@ -816,6 +859,7 @@ function handle_mouse_event(event, mouse_pos)
     end
 
     if event == "down" then
+        last_drag_press = mp.get_time()
         local initial_click_pos = {x = mouse_pos.x, y = mouse_pos.y}
         local osd_width, osd_height = mp.get_osd_size()
 
